@@ -1,3 +1,15 @@
+# MisLucas
+
+Aplicación de finanzas compartidas construida con Laravel, Vue 3 y Pinia.
+
+## Conexión bancaria con GoCardless
+
+El usuario concede el permiso en GoCardless y en su banco. MisLucas nunca solicita ni almacena sus claves bancarias.
+
+Crea credenciales de Bank Account Data, registra `http://localhost:8080/api/bank/callback` como redirect URI y copia las variables `GOCARDLESS_*` de `.env.example` a tu `.env`. Las operaciones se sincronizan cuatro veces al día y permanecen en la bandeja hasta que el usuario las acepta o descarta.
+
+---
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">

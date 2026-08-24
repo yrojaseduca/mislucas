@@ -11,7 +11,7 @@ import Textarea from 'primevue/textarea';
 import { useFinanceStore } from '../stores/finance';
 
 const visible = defineModel({ type: Boolean, default: false });
-const props = defineProps({ dashboard: { type: Object, required: true }, movement: { type: Object, default: null } });
+const props = defineProps({ dashboard: { type: Object, required: true }, movement: { type: Object, default: null }, bankTransaction: { type: Object, default: null } });
 const emit = defineEmits(['saved']);
 const store = useFinanceStore();
 const submitting = ref(false);
@@ -27,10 +27,10 @@ const frequencyOptions = [{ label: 'Cada semana', value: 'weekly' }, { label: 'C
 
 watch(visible, (isOpen) => {
     if (!isOpen) return;
-    const source = props.movement;
+    const source = props.movement ?? props.bankTransaction;
     Object.assign(form, source ? {
         type: source.type, amount: source.amount / 100, occurred_at: new Date(`${source.occurred_at.slice(0, 10)}T12:00:00`), description: source.description,
-        category_id: source.category_id, account_id: source.account_id, paid_by_member_id: source.paid_by_member_id,
+        category_id: source.category_id ?? null, account_id: source.account_id ?? props.dashboard.workspace.accounts?.[0]?.id ?? null, paid_by_member_id: source.paid_by_member_id ?? members.value[0]?.id ?? null,
         split_mode: source.splits?.length === 1 ? 'single' : 'equal', assigned_member_id: source.splits?.[0]?.member_id ?? members.value[0]?.id,
         notes: source.notes ?? '', recurring: false, frequency: 'monthly', ends_on: null, debt_id: source.debt_payment?.debt_id ?? null, interest_amount: (source.debt_payment?.interest_amount ?? 0) / 100,
     } : { type: 'expense', amount: null, occurred_at: today(), description: '', category_id: null, account_id: props.dashboard.workspace.accounts?.[0]?.id ?? null, paid_by_member_id: members.value[0]?.id ?? null, split_mode: 'equal', assigned_member_id: members.value[0]?.id ?? null, notes: '', recurring: false, frequency: 'monthly', ends_on: null, debt_id: null, interest_amount: 0 });
@@ -69,6 +69,7 @@ async function submit() {
             debt_payment: form.type === 'expense' && form.debt_id ? { debt_id: form.debt_id, interest_amount: Math.round((form.interest_amount ?? 0) * 100) } : null,
         };
         if (props.movement) await store.updateMovement(props.movement.id, payload);
+        else if (props.bankTransaction) await store.acceptBankTransaction(props.bankTransaction.id, payload);
         else await store.addMovement(payload);
         visible.value = false;
         emit('saved');
@@ -81,7 +82,7 @@ async function submit() {
 </script>
 
 <template>
-  <Dialog v-model:visible="visible" modal :header="movement ? 'Editar movimiento' : 'Nuevo movimiento'" :style="{ width: 'min(92vw, 42rem)' }">
+  <Dialog v-model:visible="visible" modal :header="movement ? 'Editar movimiento' : bankTransaction ? 'Revisar operación bancaria' : 'Nuevo movimiento'" :style="{ width: 'min(92vw, 42rem)' }">
     <form class="grid gap-5 pt-2 md:grid-cols-2" @submit.prevent="submit">
       <div><label class="mb-2 block text-sm font-semibold">Tipo</label><Select v-model="form.type" :options="typeOptions" option-label="label" option-value="value" class="w-full" /></div>
       <div><label class="mb-2 block text-sm font-semibold">Importe</label><InputNumber v-model="form.amount" mode="currency" :currency="dashboard.workspace.currency" locale="es-ES" :min="0.01" class="w-full" required /></div>
@@ -97,9 +98,9 @@ async function submit() {
         <div v-if="form.split_mode === 'single'"><label class="mb-2 block text-sm font-semibold">Asignado a</label><Select v-model="form.assigned_member_id" :options="members" option-label="display_name" option-value="id" class="w-full" required /></div>
       </template>
       <div class="md:col-span-2"><label class="mb-2 block text-sm font-semibold">Nota opcional</label><Textarea v-model="form.notes" rows="2" class="w-full" /></div>
-      <div v-if="!movement && !form.debt_id" class="flex items-center gap-3 rounded-xl bg-[#f6f7f2] p-4 md:col-span-2"><Checkbox v-model="form.recurring" input-id="recurring" binary /><label for="recurring"><b class="block">Movimiento recurrente</b><span class="text-sm text-slate-500">Se generará automáticamente en cada vencimiento.</span></label></div>
+      <div v-if="!movement && !bankTransaction && !form.debt_id" class="flex items-center gap-3 rounded-xl bg-[#f6f7f2] p-4 md:col-span-2"><Checkbox v-model="form.recurring" input-id="recurring" binary /><label for="recurring"><b class="block">Movimiento recurrente</b><span class="text-sm text-slate-500">Se generará automáticamente en cada vencimiento.</span></label></div>
       <p v-else-if="movement.recurring_transaction_id" class="rounded-xl bg-blue-50 p-3 text-sm text-blue-700 md:col-span-2">Estás editando solo esta aparición. La regla recurrente futura no cambiará.</p>
-      <template v-if="!movement && form.recurring">
+      <template v-if="!movement && !bankTransaction && form.recurring">
         <div><label class="mb-2 block text-sm font-semibold">Frecuencia</label><Select v-model="form.frequency" :options="frequencyOptions" option-label="label" option-value="value" class="w-full" /></div>
         <div><label class="mb-2 block text-sm font-semibold">Finaliza (opcional)</label><DatePicker v-model="form.ends_on" date-format="dd/mm/yy" show-icon show-button-bar class="w-full" /></div>
       </template>

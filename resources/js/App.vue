@@ -8,9 +8,11 @@ import MovementDialog from './components/MovementDialog.vue';
 import BudgetDialog from './components/BudgetDialog.vue';
 import BaseBudgetPlanDialog from './components/BaseBudgetPlanDialog.vue';
 import WealthPanel from './components/WealthPanel.vue';
+import BankInbox from './components/BankInbox.vue';
 const store = useFinanceStore();
 const movementDialogVisible = ref(false);
 const selectedMovement = ref(null);
+const selectedBankTransaction = ref(null);
 const budgetDialogVisible = ref(false);
 const basePlanDialogVisible = ref(false);
 const selectedBudget = ref(null);
@@ -22,7 +24,8 @@ const expenses = computed(() => store.current?.transactions.filter((item) => ite
 const expectedResult = computed(() => (store.current?.plan.summary.expected_income ?? 0) - (store.current?.plan.summary.expected_expenses ?? 0));
 const monthLabel = computed(() => new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(new Date(`${store.current?.plan.month ?? store.planMonth}-02T12:00:00`)));
 function openBudget(budget = null) { selectedBudget.value = budget; budgetDialogVisible.value = true; }
-function openMovement(movement = null) { selectedMovement.value = movement; movementDialogVisible.value = true; }
+function openMovement(movement = null) { selectedBankTransaction.value = null; selectedMovement.value = movement; movementDialogVisible.value = true; }
+function openBankTransaction(transaction) { selectedMovement.value = null; selectedBankTransaction.value = transaction; movementDialogVisible.value = true; }
 async function deleteMovement(movement) { if (window.confirm(`¿Eliminar "${movement.description}"? Esta acción no se puede deshacer.`)) await store.deleteMovement(movement.id); }
 function shiftMonth(offset) { const [year, month] = store.planMonth.split('-').map(Number); const date = new Date(year, month - 1 + offset, 1, 12); store.changePlanMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`); }
 </script>
@@ -48,6 +51,7 @@ function shiftMonth(offset) { const [year, month] = store.planMonth.split('-').m
           <article class="rounded-2xl bg-white p-6 shadow-sm"><p class="text-sm text-slate-500">Gastos</p><strong class="mt-2 block text-2xl">{{ money(store.current.summary.expenses) }}</strong></article>
           <article class="rounded-2xl bg-[#d9ff85] p-6 shadow-sm"><p class="text-sm text-[#315347]">Resultado</p><strong class="mt-2 block text-2xl">{{ money(store.current.summary.result) }}</strong></article>
         </section>
+        <BankInbox :dashboard="store.current" :money="money" @accept="openBankTransaction" />
         <section class="mb-8 rounded-2xl bg-white p-6 shadow-sm">
           <div class="mb-6 flex flex-wrap items-center justify-between gap-4"><div><p class="text-sm font-semibold uppercase tracking-wider text-emerald-700">Plan mensual</p><h2 class="mt-1 text-2xl font-bold capitalize">{{ monthLabel }}</h2></div><div class="flex flex-wrap items-center gap-2"><Button icon="pi pi-chevron-left" severity="secondary" text rounded aria-label="Mes anterior" @click="shiftMonth(-1)" /><Button icon="pi pi-chevron-right" severity="secondary" text rounded aria-label="Mes siguiente" @click="shiftMonth(1)" /><Button label="Plan base" icon="pi pi-sync" severity="secondary" @click="basePlanDialogVisible = true" /><Button label="Excepción este mes" icon="pi pi-calendar-plus" @click="openBudget()" /></div></div>
           <div class="mb-6 grid gap-3 md:grid-cols-3"><div class="rounded-xl bg-emerald-50 p-4"><p class="text-sm text-emerald-700">Ingresos esperados</p><b class="mt-1 block text-xl">{{ money(store.current.plan.summary.expected_income) }}</b></div><div class="rounded-xl bg-amber-50 p-4"><p class="text-sm text-amber-700">Gastos previstos</p><b class="mt-1 block text-xl">{{ money(store.current.plan.summary.expected_expenses) }}</b></div><div class="rounded-xl bg-[#183f35] p-4 text-white"><p class="text-sm text-emerald-100">Ahorro esperado</p><b class="mt-1 block text-xl">{{ money(expectedResult) }}</b></div></div>
@@ -65,7 +69,7 @@ function shiftMonth(offset) { const [year, month] = store.planMonth.split('-').m
       </div>
       <p v-else class="py-24 text-center text-slate-500">{{ store.loading ? 'Preparando tus números…' : 'No hay espacios todavía.' }}</p>
     </main>
-    <MovementDialog v-if="store.current" v-model="movementDialogVisible" :dashboard="store.current" :movement="selectedMovement" />
+    <MovementDialog v-if="store.current" v-model="movementDialogVisible" :dashboard="store.current" :movement="selectedMovement" :bank-transaction="selectedBankTransaction" />
     <BudgetDialog v-if="store.current" v-model="budgetDialogVisible" :dashboard="store.current" :budget="selectedBudget" />
     <BaseBudgetPlanDialog v-if="store.current" v-model="basePlanDialogVisible" :dashboard="store.current" />
   </div>

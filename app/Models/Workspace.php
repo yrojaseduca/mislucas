@@ -50,4 +50,9 @@ final class Workspace extends Model
     {
         return $this->hasMany(InvestmentPosition::class);
     }
+
+    public function bankConnections(): HasMany
+    {
+        return $this->hasMany(BankConnection::class);
+    }
 }

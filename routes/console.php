@@ -29,3 +29,5 @@ Artisan::command('budgets:prepare', function (BudgetPlanService $service): void 
 })->purpose('Create monthly budget snapshots from active base rules');
 
 Schedule::command('budgets:prepare')->monthlyOn(1, '00:01')->withoutOverlapping();
+
+Schedule::command('bank:sync')->cron('15 */6 * * *')->withoutOverlapping();

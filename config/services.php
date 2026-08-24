@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'gocardless' => [
+        'secret_id' => env('GOCARDLESS_SECRET_ID'),
+        'secret_key' => env('GOCARDLESS_SECRET_KEY'),
+        'redirect_uri' => env('GOCARDLESS_REDIRECT_URI', env('APP_URL').'/api/bank/callback'),
+        'api_url' => env('GOCARDLESS_API_URL', 'https://bankaccountdata.gocardless.com/api/v2'),
+        'country' => env('GOCARDLESS_COUNTRY', 'ES'),
+    ],
+
 ];
