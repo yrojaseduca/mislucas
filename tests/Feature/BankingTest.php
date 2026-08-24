@@ -9,7 +9,6 @@ use App\Models\BankTransaction;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -22,18 +21,21 @@ final class BankingTest extends TestCase
         $user = User::factory()->create();
         $workspace = Workspace::query()->create(['name' => 'Casa', 'type' => 'household', 'currency' => 'EUR']);
         $workspace->members()->create(['user_id' => $user->id, 'display_name' => 'Juan', 'role' => 'owner']);
-        config()->set('services.gocardless', ['secret_id' => 'id', 'secret_key' => 'key', 'redirect_uri' => 'http://localhost/api/bank/callback', 'api_url' => 'https://bank.test/api/v2', 'country' => 'ES']);
-        Cache::forget('gocardless.access_token');
+        $keyPath = storage_path('framework/testing/enablebanking-test.pem');
+        $key = openssl_pkey_new(['private_key_bits' => 2048]);
+        openssl_pkey_export($key, $privateKey);
+        file_put_contents($keyPath, $privateKey);
+        config()->set('services.enable_banking', ['application_id' => 'app-id', 'private_key_path' => $keyPath, 'redirect_uri' => 'http://localhost/api/bank/callback', 'api_url' => 'https://bank.test', 'country' => 'ES']);
         Http::fake([
-            'https://bank.test/api/v2/token/new/' => Http::response(['access' => 'app-token', 'access_expires' => 86400]),
-            'https://bank.test/api/v2/institutions/*' => Http::response([['id' => 'BBVA_ES', 'name' => 'BBVA']]),
-            'https://bank.test/api/v2/requisitions/' => Http::response(['id' => 'req-1', 'link' => 'https://bank.test/authorize']),
+            'https://bank.test/aspsps*' => Http::response(['aspsps' => [['name' => 'BBVA', 'country' => 'ES', 'logo' => 'https://bank.test/bbva.png']]]),
+            'https://bank.test/auth' => Http::response(['authorization_id' => 'auth-1', 'url' => 'https://bank.test/authorize']),
         ]);
 
-        $this->actingAs($user)->postJson("/api/workspaces/{$workspace->id}/bank/connect", ['institution_id' => 'BBVA_ES'])
+        $this->actingAs($user)->postJson("/api/workspaces/{$workspace->id}/bank/connect", ['institution_id' => 'BBVA'])
             ->assertOk()->assertJsonPath('authorization_url', 'https://bank.test/authorize');
 
-        $this->assertDatabaseHas('bank_connections', ['workspace_id' => $workspace->id, 'provider' => 'gocardless', 'external_id' => 'req-1', 'provider_name' => 'BBVA']);
+        $this->assertDatabaseHas('bank_connections', ['workspace_id' => $workspace->id, 'provider' => 'enable_banking', 'external_id' => 'auth-1', 'provider_name' => 'BBVA']);
+        unlink($keyPath);
     }
 
     public function test_member_can_accept_a_banking_operation_as_a_movement(): void

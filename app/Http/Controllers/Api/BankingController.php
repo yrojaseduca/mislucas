@@ -31,8 +31,8 @@ final class BankingController extends Controller
 
     public function callback(Request $request, BankIntegrationService $service): RedirectResponse
     {
-        $data = $request->validate(['state' => 'required|string']);
-        $service->complete($data['state'], $request->user());
+        $data = $request->validate(['code' => 'required|string', 'state' => 'required|string']);
+        $service->complete($data['code'], $data['state'], $request->user());
 
         return redirect('/?bank=connected');
     }

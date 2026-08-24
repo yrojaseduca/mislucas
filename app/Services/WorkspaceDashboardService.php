@@ -35,6 +35,6 @@ final readonly class WorkspaceDashboardService
             ->latest('occurred_at')
             ->get();
 
-        return ['workspace' => $workspace, 'period' => $start->format('Y-m'), 'summary' => ['income' => $income, 'expenses' => $expenses, 'result' => $income - $expenses], 'balances' => $balances, 'transactions' => $this->transactions->recentForWorkspace($workspace->id, 50, $start, $end), 'plan' => $this->budgetPlan->build($workspace, $month), 'bank_inbox' => $bankInbox, 'banking_configured' => (bool) config('services.gocardless.secret_id')];
+        return ['workspace' => $workspace, 'period' => $start->format('Y-m'), 'summary' => ['income' => $income, 'expenses' => $expenses, 'result' => $income - $expenses], 'balances' => $balances, 'transactions' => $this->transactions->recentForWorkspace($workspace->id, 50, $start, $end), 'plan' => $this->budgetPlan->build($workspace, $month), 'bank_inbox' => $bankInbox, 'banking_configured' => (bool) config('services.enable_banking.application_id')];
     }
 }

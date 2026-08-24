@@ -35,12 +35,12 @@ return [
         ],
     ],
 
-    'gocardless' => [
-        'secret_id' => env('GOCARDLESS_SECRET_ID'),
-        'secret_key' => env('GOCARDLESS_SECRET_KEY'),
-        'redirect_uri' => env('GOCARDLESS_REDIRECT_URI', env('APP_URL').'/api/bank/callback'),
-        'api_url' => env('GOCARDLESS_API_URL', 'https://bankaccountdata.gocardless.com/api/v2'),
-        'country' => env('GOCARDLESS_COUNTRY', 'ES'),
+    'enable_banking' => [
+        'application_id' => env('ENABLE_BANKING_APPLICATION_ID'),
+        'private_key_path' => env('ENABLE_BANKING_PRIVATE_KEY_PATH', 'storage/app/private/enablebanking.pem'),
+        'redirect_uri' => env('ENABLE_BANKING_REDIRECT_URI', env('APP_URL').'/api/bank/callback'),
+        'api_url' => env('ENABLE_BANKING_API_URL', 'https://api.enablebanking.com'),
+        'country' => env('ENABLE_BANKING_COUNTRY', 'ES'),
     ],
 
 ];

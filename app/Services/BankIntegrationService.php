@@ -11,12 +11,12 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Repositories\BankTransactionRepository;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Crypt;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 final readonly class BankIntegrationService
 {
@@ -24,47 +24,44 @@ final readonly class BankIntegrationService
 
     public function institutions(): array
     {
-        $this->ensureConfigured();
+        $response = $this->http()->get($this->apiUrl('/aspsps'), ['country' => config('services.enable_banking.country'), 'psu_type' => 'personal', 'service' => 'AIS'])->throw()->json('aspsps', []);
 
-        return Http::withToken($this->accessToken())->acceptJson()->get($this->apiUrl('/institutions/'), ['country' => config('services.gocardless.country')])->throw()->json();
+        return collect($response)->map(fn (array $bank): array => ['id' => $bank['name'], 'name' => $bank['name'], 'logo' => $bank['logo'] ?? null, 'country' => $bank['country']])->values()->all();
     }
 
     public function authorizationUrl(Workspace $workspace, User $user, string $institutionId): string
     {
-        $this->ensureConfigured();
         $institution = collect($this->institutions())->firstWhere('id', $institutionId);
         if (! $institution) {
             throw ValidationException::withMessages(['institution_id' => 'El banco seleccionado no está disponible.']);
         }
         $state = Str::random(64);
-        $connection = $workspace->bankConnections()->create(['user_id' => $user->id, 'provider' => 'gocardless', 'institution_id' => $institutionId, 'provider_name' => $institution['name'], 'status' => 'pending']);
-        session()->put('gocardless_oauth', ['state' => $state, 'connection_id' => $connection->id, 'user_id' => $user->id]);
-        $requisition = Http::withToken($this->accessToken())->acceptJson()->post($this->apiUrl('/requisitions/'), [
-            'redirect' => config('services.gocardless.redirect_uri').'?state='.urlencode($state),
-            'institution_id' => $institutionId,
-            'reference' => 'mislucas-'.$connection->id.'-'.Str::lower(Str::random(12)),
-            'user_language' => 'ES',
+        $connection = $workspace->bankConnections()->create(['user_id' => $user->id, 'provider' => 'enable_banking', 'institution_id' => $institutionId, 'provider_name' => $institution['name'], 'status' => 'pending']);
+        session()->put('enable_banking_oauth', ['state' => $state, 'connection_id' => $connection->id, 'user_id' => $user->id]);
+        $authorization = $this->http()->post($this->apiUrl('/auth'), [
+            'access' => ['valid_until' => now()->addDays(89)->toIso8601String(), 'balances' => true, 'transactions' => true],
+            'aspsp' => ['name' => $institution['name'], 'country' => $institution['country']],
+            'state' => $state,
+            'redirect_url' => config('services.enable_banking.redirect_uri'),
+            'psu_type' => 'personal',
         ])->throw()->json();
-        $connection->update(['external_id' => $requisition['id']]);
+        $connection->update(['external_id' => $authorization['authorization_id'] ?? null]);
 
-        return $requisition['link'];
+        return $authorization['url'];
     }
 
-    public function complete(string $state, User $user): BankConnection
+    public function complete(string $code, string $state, User $user): BankConnection
     {
-        $oauth = session()->pull('gocardless_oauth');
+        $oauth = session()->pull('enable_banking_oauth');
         if (! is_array($oauth) || ! hash_equals((string) ($oauth['state'] ?? ''), $state) || (int) ($oauth['user_id'] ?? 0) !== $user->id) {
             throw ValidationException::withMessages(['connection' => 'La autorización bancaria ha caducado o no es válida.']);
         }
         $connection = BankConnection::query()->whereKey($oauth['connection_id'])->where('user_id', $user->id)->firstOrFail();
-        $requisition = Http::withToken($this->accessToken())->acceptJson()->get($this->apiUrl('/requisitions/'.$connection->external_id.'/'))->throw()->json();
-        if (($requisition['status'] ?? null) !== 'LN') {
-            throw ValidationException::withMessages(['connection' => 'El banco todavía no ha confirmado la conexión.']);
+        $session = $this->http()->post($this->apiUrl('/sessions'), ['code' => $code])->throw()->json();
+        $connection->update(['external_id' => $session['session_id'], 'provider_name' => $session['aspsp']['name'] ?? $connection->provider_name, 'status' => 'active']);
+        foreach ($session['accounts'] ?? [] as $remoteAccount) {
+            $this->importAccount($connection, $remoteAccount);
         }
-        foreach ($requisition['accounts'] ?? [] as $externalId) {
-            $this->importAccount($connection, $externalId);
-        }
-        $connection->update(['status' => 'active']);
         $this->sync($connection);
 
         return $connection;
@@ -77,22 +74,20 @@ final readonly class BankIntegrationService
         }
         $count = 0;
         foreach ($connection->accounts as $account) {
-            $response = Http::withToken($this->accessToken())->acceptJson()->get($this->apiUrl('/accounts/'.$account->external_id.'/transactions/'));
+            $response = $this->http()->get($this->apiUrl('/accounts/'.$account->external_id.'/transactions'), ['date_from' => now()->subDays($connection->last_synced_at ? 7 : 90)->toDateString(), 'date_to' => today()->toDateString()]);
             if (! $response->successful()) {
                 continue;
             }
-            foreach ($response->json('transactions.booked', []) as $remote) {
-                $amount = (float) ($remote['transactionAmount']['amount'] ?? 0);
-                $externalId = $remote['transactionId'] ?? hash('sha256', implode('|', [$remote['bookingDate'] ?? '', $amount, $remote['remittanceInformationUnstructured'] ?? '']));
-                $this->bankTransactions->import($account, [
-                    'external_id' => $externalId,
-                    'type' => $amount >= 0 ? 'income' : 'expense',
-                    'amount' => (int) round(abs($amount) * 100),
-                    'occurred_at' => $remote['bookingDate'] ?? $remote['valueDate'] ?? today()->toDateString(),
-                    'description' => $remote['creditorName'] ?? $remote['debtorName'] ?? $remote['remittanceInformationUnstructured'] ?? 'Movimiento bancario',
-                    'merchant_name' => $remote['creditorName'] ?? $remote['debtorName'] ?? null,
-                    'classification' => isset($remote['bankTransactionCode']) ? [$remote['bankTransactionCode']] : [],
-                ]);
+            foreach ($response->json('transactions', []) as $remote) {
+                if (($remote['status'] ?? 'BOOK') !== 'BOOK') {
+                    continue;
+                }
+                $amount = (float) ($remote['transaction_amount']['amount'] ?? 0);
+                $type = ($remote['credit_debit_indicator'] ?? 'DBIT') === 'CRDT' ? 'income' : 'expense';
+                $externalId = $remote['transaction_id'] ?? $remote['entry_reference'] ?? hash('sha256', implode('|', [$remote['booking_date'] ?? '', $amount, implode(' ', $remote['remittance_information'] ?? [])]));
+                $party = $type === 'income' ? ($remote['debtor']['name'] ?? null) : ($remote['creditor']['name'] ?? null);
+                $description = $party ?? implode(' ', $remote['remittance_information'] ?? []) ?: 'Movimiento bancario';
+                $this->bankTransactions->import($account, ['external_id' => $externalId, 'type' => $type, 'amount' => (int) round(abs($amount) * 100), 'occurred_at' => $remote['booking_date'] ?? $remote['transaction_date'] ?? today()->toDateString(), 'description' => $description, 'merchant_name' => $party, 'classification' => array_values(array_filter([$remote['bank_transaction_code']['code'] ?? null, $remote['bank_transaction_code']['sub_code'] ?? null]))]);
                 $count++;
             }
         }
@@ -122,34 +117,53 @@ final readonly class BankIntegrationService
         }
     }
 
-    private function importAccount(BankConnection $connection, string $externalId): BankAccount
+    private function importAccount(BankConnection $connection, array $remote): BankAccount
     {
-        $details = Http::withToken($this->accessToken())->acceptJson()->get($this->apiUrl('/accounts/'.$externalId.'/details/'))->throw()->json('account', []);
-
-        return $connection->accounts()->updateOrCreate(['external_id' => $externalId], ['kind' => 'account', 'display_name' => $details['displayName'] ?? $details['name'] ?? $details['product'] ?? 'Cuenta bancaria', 'currency' => $details['currency'] ?? 'EUR', 'provider_id' => $connection->institution_id]);
+        return $connection->accounts()->updateOrCreate(['external_id' => $remote['uid']], ['kind' => 'account', 'display_name' => $remote['details'] ?? $remote['product'] ?? $remote['name'] ?? 'Cuenta bancaria', 'currency' => $remote['currency'] ?? 'EUR', 'provider_id' => $connection->institution_id]);
     }
 
-    private function accessToken(): string
+    private function http(): PendingRequest
     {
-        $cached = Cache::get('gocardless.access_token');
-        if (is_string($cached)) {
-            return Crypt::decryptString($cached);
-        }
-        $tokens = Http::acceptJson()->post($this->apiUrl('/token/new/'), ['secret_id' => config('services.gocardless.secret_id'), 'secret_key' => config('services.gocardless.secret_key')])->throw()->json();
-        Cache::put('gocardless.access_token', Crypt::encryptString($tokens['access']), now()->addSeconds(max(60, (int) $tokens['access_expires'] - 300)));
+        $this->ensureConfigured();
 
-        return $tokens['access'];
+        return Http::withToken($this->jwt())->acceptJson();
+    }
+
+    private function jwt(): string
+    {
+        $now = time();
+        $header = $this->base64Url(json_encode(['typ' => 'JWT', 'alg' => 'RS256', 'kid' => config('services.enable_banking.application_id')], JSON_THROW_ON_ERROR));
+        $payload = $this->base64Url(json_encode(['iss' => 'enablebanking.com', 'aud' => 'api.enablebanking.com', 'iat' => $now, 'exp' => $now + 3600], JSON_THROW_ON_ERROR));
+        $data = $header.'.'.$payload;
+        $key = openssl_pkey_get_private(file_get_contents($this->privateKeyPath()));
+        if ($key === false || ! openssl_sign($data, $signature, $key, OPENSSL_ALGO_SHA256)) {
+            throw new RuntimeException('No se pudo firmar la solicitud de Enable Banking.');
+        }
+
+        return $data.'.'.$this->base64Url($signature);
+    }
+
+    private function privateKeyPath(): string
+    {
+        $path = (string) config('services.enable_banking.private_key_path');
+
+        return str_starts_with($path, '/') ? $path : base_path($path);
+    }
+
+    private function base64Url(string $value): string
+    {
+        return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
     }
 
     private function apiUrl(string $path): string
     {
-        return rtrim((string) config('services.gocardless.api_url'), '/').$path;
+        return rtrim((string) config('services.enable_banking.api_url'), '/').$path;
     }
 
     private function ensureConfigured(): void
     {
-        if (! config('services.gocardless.secret_id') || ! config('services.gocardless.secret_key')) {
-            throw ValidationException::withMessages(['connection' => 'Configura GOCARDLESS_SECRET_ID y GOCARDLESS_SECRET_KEY para vincular un banco.']);
+        if (! config('services.enable_banking.application_id') || ! is_readable($this->privateKeyPath())) {
+            throw ValidationException::withMessages(['connection' => 'Configura ENABLE_BANKING_APPLICATION_ID y la clave privada para vincular un banco.']);
         }
     }
 }

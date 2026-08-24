@@ -54,7 +54,7 @@ async function dismiss(item) {
       <div><div class="flex items-center gap-2"><h2 class="text-xl font-bold">Bandeja bancaria</h2><Tag :value="String(dashboard.bank_inbox.length)" severity="info" /></div><p class="mt-1 text-sm text-slate-500">Revisa cada operación antes de añadirla a tus finanzas.</p></div>
       <Button label="Vincular banco" icon="pi pi-link" :disabled="!dashboard.banking_configured" :loading="loading" @click="openConnect" />
     </div>
-    <p v-if="!dashboard.banking_configured" class="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Configura las credenciales gratuitas de GoCardless Bank Account Data para habilitar la conexión. MisLucas nunca solicita ni almacena tus claves bancarias.</p>
+    <p v-if="!dashboard.banking_configured" class="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Configura tu aplicación personal de Enable Banking para habilitar la conexión. MisLucas nunca solicita ni almacena tus claves bancarias.</p>
     <p v-if="error" class="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{{ error }}</p>
     <div v-if="dashboard.workspace.bank_connections?.length" class="mb-5 flex flex-wrap gap-2">
       <Button v-for="connection in dashboard.workspace.bank_connections" :key="connection.id" :label="`Sincronizar ${connection.provider_name || 'banco'}`" icon="pi pi-refresh" size="small" severity="secondary" :loading="loading" @click="sync(connection)" />

@@ -14,7 +14,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->string('provider')->default('gocardless');
+            $table->string('provider')->default('enable_banking');
             $table->string('provider_name')->nullable();
             $table->string('status')->default('active');
             $table->text('access_token');

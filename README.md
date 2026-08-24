@@ -2,11 +2,11 @@
 
 Aplicación de finanzas compartidas construida con Laravel, Vue 3 y Pinia.
 
-## Conexión bancaria con GoCardless
+## Conexión bancaria con Enable Banking
 
-El usuario concede el permiso en GoCardless y en su banco. MisLucas nunca solicita ni almacena sus claves bancarias.
+El usuario concede el permiso en Enable Banking y en su banco. MisLucas nunca solicita ni almacena sus claves bancarias; las llamadas se firman en Laravel con una clave privada local.
 
-Crea credenciales de Bank Account Data, registra `http://localhost:8080/api/bank/callback` como redirect URI y copia las variables `GOCARDLESS_*` de `.env.example` a tu `.env`. Las operaciones se sincronizan cuatro veces al día y permanecen en la bandeja hasta que el usuario las acepta o descarta.
+Registra una aplicación personal restringida, añade `http://localhost:8080/api/bank/callback` como redirect URI, guarda la clave descargada en `storage/app/private/enablebanking.pem` y copia las variables `ENABLE_BANKING_*` de `.env.example` a tu `.env`. Las operaciones se sincronizan cuatro veces al día y permanecen en la bandeja hasta que el usuario las acepta o descarta.
 
 ---
 
