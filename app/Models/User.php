@@ -23,6 +23,7 @@ class User extends Authenticatable
         'email',
         'password',
         'is_superadmin',
+        'is_active',
     ];
 
     /**
@@ -46,6 +47,12 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_superadmin' => 'boolean',
+            'is_active' => 'boolean',
         ];
+    }
+
+    public function memberships()
+    {
+        return $this->hasMany(WorkspaceMember::class);
     }
 }

@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\WealthController;
 use App\Http\Controllers\Api\WorkspaceController;
 use App\Http\Controllers\Api\WorkspaceInvitationController;
 use App\Http\Controllers\Api\WorkspaceManagementController;
+use App\Http\Controllers\Api\AdminController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('api')->group(function (): void {
@@ -24,6 +25,12 @@ Route::prefix('api')->group(function (): void {
         Route::post('/workspaces', [WorkspaceManagementController::class, 'store']);
         Route::get('/workspaces/{workspace}', [WorkspaceController::class, 'show']);
         Route::post('/workspaces/{workspace}/invitations', [WorkspaceInvitationController::class, 'store']);
+        Route::get('/admin', [AdminController::class, 'index']);
+        Route::put('/admin/users/{user}', [AdminController::class, 'updateUser']);
+        Route::put('/admin/workspaces/{workspace}', [AdminController::class, 'updateWorkspace']);
+        Route::post('/admin/workspaces/{workspace}/categories', [AdminController::class, 'storeCategory']);
+        Route::put('/admin/workspaces/{workspace}/categories/{category}', [AdminController::class, 'updateCategory']);
+        Route::delete('/admin/workspaces/{workspace}/categories/{category}', [AdminController::class, 'destroyCategory']);
         Route::post('/workspaces/{workspace}/transactions', [TransactionController::class, 'store']);
         Route::put('/workspaces/{workspace}/transactions/{transaction}', [TransactionController::class, 'update']);
         Route::delete('/workspaces/{workspace}/transactions/{transaction}', [TransactionController::class, 'destroy']);

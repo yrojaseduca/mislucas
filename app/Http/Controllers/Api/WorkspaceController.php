@@ -14,7 +14,7 @@ final class WorkspaceController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Workspace::query()->with('members');
+        $query = Workspace::query()->with('members')->whereNull('archived_at');
         if (! $request->user()->is_superadmin) {
             $query->whereHas('members', fn ($query) => $query->where('user_id', $request->user()->id));
         }

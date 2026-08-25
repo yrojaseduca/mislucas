@@ -12,6 +12,7 @@ import BankInbox from './components/BankInbox.vue';
 import InvitationDialog from './components/InvitationDialog.vue';
 import InvitationView from './views/InvitationView.vue';
 import WorkspaceDialog from './components/WorkspaceDialog.vue';
+import AdminPanel from './components/AdminPanel.vue';
 const store = useFinanceStore();
 const movementDialogVisible = ref(false);
 const selectedMovement = ref(null);
@@ -21,6 +22,7 @@ const basePlanDialogVisible = ref(false);
 const selectedBudget = ref(null);
 const invitationDialogVisible = ref(false);
 const workspaceDialogVisible = ref(false);
+const adminMode = ref(false);
 const invitationToken = window.location.pathname.match(/^\/invitacion\/([^/]+)$/)?.[1] ?? null;
 onMounted(() => store.bootstrap());
 const money = (cents) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: store.current?.workspace.currency ?? 'EUR' }).format((cents ?? 0) / 100);
@@ -35,6 +37,7 @@ function openMovement(movement = null) { selectedBankTransaction.value = null; s
 function openBankTransaction(transaction) { selectedMovement.value = null; selectedBankTransaction.value = transaction; movementDialogVisible.value = true; }
 async function deleteMovement(movement) { if (window.confirm(`¿Eliminar "${movement.description}"? Esta acción no se puede deshacer.`)) await store.deleteMovement(movement.id); }
 function shiftMonth(offset) { const [year, month] = store.planMonth.split('-').map(Number); const date = new Date(year, month - 1 + offset, 1, 12); store.changePlanMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`); }
+async function enterWorkspace(id) { adminMode.value = false; await store.select(id); }
 </script>
 
 <template>
@@ -45,15 +48,17 @@ function shiftMonth(offset) { const [year, month] = store.planMonth.split('-').m
     <aside class="bg-[#183f35] p-6 text-white lg:min-h-screen lg:w-72">
       <div class="mb-10 flex items-center gap-3 text-xl font-bold"><span class="grid h-10 w-10 place-items-center rounded-xl bg-[#d9ff85] text-[#183f35]">M</span> MisLucas</div>
       <p class="mb-3 text-xs font-semibold uppercase tracking-[.18em] text-emerald-200">Mis espacios</p>
-      <button v-for="space in store.workspaces" :key="space.id" @click="store.select(space.id)" class="mb-2 flex w-full items-center gap-3 rounded-xl p-3 text-left transition" :class="store.current?.workspace.id === space.id ? 'bg-white/15' : 'hover:bg-white/10'">
+      <button v-for="space in store.workspaces" :key="space.id" @click="enterWorkspace(space.id)" class="mb-2 flex w-full items-center gap-3 rounded-xl p-3 text-left transition" :class="!adminMode && store.current?.workspace.id === space.id ? 'bg-white/15' : 'hover:bg-white/10'">
         <i :class="space.type === 'business' ? 'pi pi-briefcase' : 'pi pi-home'" />
         <span><b class="block">{{ space.name }}</b><small class="text-emerald-100">{{ space.members.length }} participantes</small></span>
       </button>
       <Button v-if="store.user?.is_superadmin" label="Crear espacio" icon="pi pi-plus" severity="secondary" text class="mt-2 w-full !justify-start !text-white" @click="workspaceDialogVisible = true" />
+      <Button v-if="store.user?.is_superadmin" label="Administración" icon="pi pi-cog" severity="secondary" text class="mt-1 w-full !justify-start !text-white" @click="adminMode = true" />
       <div class="mt-10 border-t border-white/15 pt-5"><p class="mb-3 text-sm text-emerald-100">{{ store.user.name }}</p><Button label="Cerrar sesión" icon="pi pi-sign-out" severity="secondary" text class="w-full !justify-start !text-white" @click="store.logout" /></div>
     </aside>
     <main class="mx-auto w-full max-w-6xl p-5 md:p-10">
-      <div v-if="store.current">
+      <AdminPanel v-if="adminMode" @updated="store.loadWorkspaces" />
+      <div v-else-if="store.current">
         <header class="mb-8 flex flex-wrap items-start justify-between gap-3"><div><p class="text-sm capitalize text-slate-500">{{ store.current.workspace.name }} · {{ monthLabel }}</p><h1 class="text-3xl font-bold tracking-tight">{{ title }}</h1></div><div class="flex gap-2"><Button v-if="canInvite" label="Invitar" icon="pi pi-user-plus" severity="secondary" @click="invitationDialogVisible = true" /><Button label="Nuevo movimiento" icon="pi pi-plus" @click="openMovement()" /></div></header>
         <section class="mb-8 grid gap-4 md:grid-cols-3">
           <article class="rounded-2xl bg-white p-6 shadow-sm"><p class="text-sm text-slate-500">Ingresos</p><strong class="mt-2 block text-2xl text-emerald-700">{{ money(store.current.summary.income) }}</strong></article>

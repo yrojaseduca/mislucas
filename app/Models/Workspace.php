@@ -9,7 +9,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class Workspace extends Model
 {
-    protected $fillable = ['name', 'type', 'currency'];
+    protected $fillable = ['name', 'type', 'currency', 'archived_at'];
+
+    protected function casts(): array
+    {
+        return ['archived_at' => 'datetime'];
+    }
 
     public function members(): HasMany
     {
