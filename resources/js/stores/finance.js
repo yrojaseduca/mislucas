@@ -38,6 +38,11 @@ export const useFinanceStore = defineStore('finance', {
         async createInvitation(email) {
             return (await axios.post(`/api/workspaces/${this.current.workspace.id}/invitations`, { email })).data;
         },
+        async createWorkspace(workspace) {
+            const created = (await axios.post('/api/workspaces', workspace)).data;
+            await this.loadWorkspaces();
+            await this.select(created.id);
+        },
         async select(id) {
             this.current = (await axios.get(`/api/workspaces/${id}`, { params: { month: this.planMonth } })).data;
         },

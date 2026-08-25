@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\WealthController;
 use App\Http\Controllers\Api\WorkspaceController;
 use App\Http\Controllers\Api\WorkspaceInvitationController;
+use App\Http\Controllers\Api\WorkspaceManagementController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('api')->group(function (): void {
@@ -20,6 +21,7 @@ Route::prefix('api')->group(function (): void {
         Route::get('/user', [AuthController::class, 'user']);
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/workspaces', [WorkspaceController::class, 'index']);
+        Route::post('/workspaces', [WorkspaceManagementController::class, 'store']);
         Route::get('/workspaces/{workspace}', [WorkspaceController::class, 'show']);
         Route::post('/workspaces/{workspace}/invitations', [WorkspaceInvitationController::class, 'store']);
         Route::post('/workspaces/{workspace}/transactions', [TransactionController::class, 'store']);

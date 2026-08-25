@@ -11,6 +11,7 @@ import WealthPanel from './components/WealthPanel.vue';
 import BankInbox from './components/BankInbox.vue';
 import InvitationDialog from './components/InvitationDialog.vue';
 import InvitationView from './views/InvitationView.vue';
+import WorkspaceDialog from './components/WorkspaceDialog.vue';
 const store = useFinanceStore();
 const movementDialogVisible = ref(false);
 const selectedMovement = ref(null);
@@ -19,6 +20,7 @@ const budgetDialogVisible = ref(false);
 const basePlanDialogVisible = ref(false);
 const selectedBudget = ref(null);
 const invitationDialogVisible = ref(false);
+const workspaceDialogVisible = ref(false);
 const invitationToken = window.location.pathname.match(/^\/invitacion\/([^/]+)$/)?.[1] ?? null;
 onMounted(() => store.bootstrap());
 const money = (cents) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: store.current?.workspace.currency ?? 'EUR' }).format((cents ?? 0) / 100);
@@ -47,6 +49,7 @@ function shiftMonth(offset) { const [year, month] = store.planMonth.split('-').m
         <i :class="space.type === 'business' ? 'pi pi-briefcase' : 'pi pi-home'" />
         <span><b class="block">{{ space.name }}</b><small class="text-emerald-100">{{ space.members.length }} participantes</small></span>
       </button>
+      <Button v-if="store.user?.is_superadmin" label="Crear espacio" icon="pi pi-plus" severity="secondary" text class="mt-2 w-full !justify-start !text-white" @click="workspaceDialogVisible = true" />
       <div class="mt-10 border-t border-white/15 pt-5"><p class="mb-3 text-sm text-emerald-100">{{ store.user.name }}</p><Button label="Cerrar sesión" icon="pi pi-sign-out" severity="secondary" text class="w-full !justify-start !text-white" @click="store.logout" /></div>
     </aside>
     <main class="mx-auto w-full max-w-6xl p-5 md:p-10">
@@ -73,11 +76,12 @@ function shiftMonth(offset) { const [year, month] = store.planMonth.split('-').m
         </section>
         <WealthPanel :dashboard="store.current" :money="money" />
       </div>
-      <p v-else class="py-24 text-center text-slate-500">{{ store.loading ? 'Preparando tus números…' : 'No hay espacios todavía.' }}</p>
+      <section v-else class="mx-auto mt-24 max-w-lg rounded-3xl bg-white p-10 text-center shadow-sm"><span class="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-emerald-50 text-2xl text-emerald-700"><i class="pi pi-home" /></span><h1 class="mt-5 text-2xl font-bold">Crea tu primer espacio</h1><p class="mt-3 text-slate-500">Organiza un hogar o un negocio y después invita a las personas que participarán.</p><Button v-if="store.user?.is_superadmin" label="Crear espacio" icon="pi pi-plus" class="mt-7" @click="workspaceDialogVisible = true" /></section>
     </main>
     <MovementDialog v-if="store.current" v-model="movementDialogVisible" :dashboard="store.current" :movement="selectedMovement" :bank-transaction="selectedBankTransaction" />
     <BudgetDialog v-if="store.current" v-model="budgetDialogVisible" :dashboard="store.current" :budget="selectedBudget" />
     <BaseBudgetPlanDialog v-if="store.current" v-model="basePlanDialogVisible" :dashboard="store.current" />
     <InvitationDialog v-if="store.current" v-model="invitationDialogVisible" />
+    <WorkspaceDialog v-model="workspaceDialogVisible" />
   </div>
 </template>
