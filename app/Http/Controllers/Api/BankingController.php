@@ -22,7 +22,7 @@ final class BankingController extends Controller
 {
     public function importCsv(WorkspaceMemberRequest $request, Workspace $workspace, CsvTransactionImportService $service): JsonResponse
     {
-        $data = $request->validate(['file' => ['required', 'file', 'mimes:csv,txt', 'max:5120']]);
+        $data = $request->validate(['file' => ['required', 'file', 'mimes:csv,txt,xls,xlsx', 'max:5120']]);
 
         try {
             return response()->json($service->import($workspace, (int) $request->user()->id, $data['file']));

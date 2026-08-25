@@ -65,7 +65,7 @@ async function importCsv(event) {
   <section class="mb-8 rounded-2xl bg-white p-6 shadow-sm">
     <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
       <div><div class="flex items-center gap-2"><h2 class="text-xl font-bold">Bandeja de entrada</h2><Tag :value="String(dashboard.bank_inbox.length)" severity="info" /></div><p class="mt-1 text-sm text-slate-500">Revisa operaciones bancarias o importadas antes de añadirlas.</p></div>
-      <div class="flex flex-wrap gap-2"><input ref="fileInput" type="file" accept=".csv,text/csv" class="hidden" @change="importCsv" /><Button label="Importar CSV" icon="pi pi-upload" severity="secondary" :loading="loading" @click="fileInput.click()" /><Button label="Vincular banco" icon="pi pi-link" :disabled="!dashboard.banking_configured" :loading="loading" @click="openConnect" /></div>
+      <div class="flex flex-wrap gap-2"><input ref="fileInput" type="file" accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden" @change="importCsv" /><Button label="Importar archivo" icon="pi pi-upload" severity="secondary" :loading="loading" @click="fileInput.click()" /><Button label="Vincular banco" icon="pi pi-link" :disabled="!dashboard.banking_configured" :loading="loading" @click="openConnect" /></div>
     </div>
     <p v-if="!dashboard.banking_configured" class="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Configura tu aplicación personal de Enable Banking para habilitar la conexión. MisLucas nunca solicita ni almacena tus claves bancarias.</p>
     <p v-if="error" class="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{{ error }}</p>

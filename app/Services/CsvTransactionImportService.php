@@ -9,24 +9,31 @@ use App\Models\Workspace;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use RuntimeException;
 
 final class CsvTransactionImportService
 {
     public function import(Workspace $workspace, int $userId, UploadedFile $file): array
     {
-        $handle = fopen($file->getRealPath(), 'rb');
-        throw_if($handle === false, new RuntimeException('No se pudo leer el archivo CSV.'));
-        $firstLine = fgets($handle);
-        throw_if($firstLine === false, new RuntimeException('El archivo CSV está vacío.'));
-        $delimiter = substr_count($firstLine, ';') > substr_count($firstLine, ',') ? ';' : ',';
-        rewind($handle);
-        $headers = array_map($this->normalizeHeader(...), fgetcsv($handle, separator: $delimiter) ?: []);
+        $rows = $this->rows($file);
+        throw_if($rows === [], new RuntimeException('El archivo está vacío.'));
+        $headerRow = null;
+        $headers = [];
+        foreach (array_slice($rows, 0, 20, true) as $index => $candidate) {
+            $normalized = array_map(fn ($value) => $this->normalizeHeader((string) $value), $candidate);
+            if ($this->column($normalized, ['fecha', 'date', 'fecha_operacion', 'fecha_valor']) !== null
+                && $this->column($normalized, ['descripcion', 'description', 'concepto', 'detalle', 'comercio']) !== null
+                && $this->column($normalized, ['importe', 'amount', 'cantidad', 'monto']) !== null) {
+                $headerRow = $index; $headers = $normalized; break;
+            }
+        }
+        throw_if($headerRow === null, new RuntimeException('No se encontró una fila con las columnas fecha, descripción/concepto e importe.'));
         $dateIndex = $this->column($headers, ['fecha', 'date', 'fecha_operacion', 'fecha_valor']);
         $descriptionIndex = $this->column($headers, ['descripcion', 'description', 'concepto', 'detalle', 'comercio']);
         $amountIndex = $this->column($headers, ['importe', 'amount', 'cantidad', 'monto']);
         $typeIndex = $this->column($headers, ['tipo', 'type']);
-        throw_if($dateIndex === null || $descriptionIndex === null || $amountIndex === null, new RuntimeException('El CSV debe incluir las columnas fecha, descripción/concepto e importe.'));
 
         $connection = BankConnection::query()->firstOrCreate(
             ['workspace_id' => $workspace->id, 'provider' => 'csv', 'external_id' => 'csv-inbox'],
@@ -40,12 +47,11 @@ final class CsvTransactionImportService
         $imported = 0;
         $duplicates = 0;
         $errors = [];
-        $line = 1;
-        while (($row = fgetcsv($handle, separator: $delimiter)) !== false) {
-            $line++;
+        foreach (array_slice($rows, $headerRow + 1, null, true) as $rowIndex => $row) {
+            $line = $rowIndex + 1;
             if ($row === [null] || count(array_filter($row, fn ($value) => trim((string) $value) !== '')) === 0) continue;
             try {
-                $date = $this->date((string) ($row[$dateIndex] ?? ''));
+                $date = $this->date($row[$dateIndex] ?? '');
                 [$amount, $negative] = $this->amount((string) ($row[$amountIndex] ?? ''));
                 $description = trim((string) ($row[$descriptionIndex] ?? ''));
                 throw_if($description === '', new RuntimeException('falta la descripción'));
@@ -61,9 +67,33 @@ final class CsvTransactionImportService
                 $errors[] = "Fila {$line}: {$exception->getMessage()}";
             }
         }
-        fclose($handle);
 
         return compact('imported', 'duplicates', 'errors');
+    }
+
+    private function rows(UploadedFile $file): array
+    {
+        $extension = Str::lower($file->getClientOriginalExtension());
+        if (in_array($extension, ['xls', 'xlsx'], true)) {
+            $reader = IOFactory::createReaderForFile($file->getRealPath());
+            $reader->setReadDataOnly(true);
+            $spreadsheet = $reader->load($file->getRealPath());
+            $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
+            $spreadsheet->disconnectWorksheets();
+
+            return $rows;
+        }
+        $handle = fopen($file->getRealPath(), 'rb');
+        throw_if($handle === false, new RuntimeException('No se pudo leer el archivo CSV.'));
+        $firstLine = fgets($handle);
+        throw_if($firstLine === false, new RuntimeException('El archivo CSV está vacío.'));
+        $delimiter = substr_count($firstLine, ';') > substr_count($firstLine, ',') ? ';' : ',';
+        rewind($handle);
+        $rows = [];
+        while (($row = fgetcsv($handle, separator: $delimiter)) !== false) $rows[] = $row;
+        fclose($handle);
+
+        return $rows;
     }
 
     private function normalizeHeader(string $header): string
@@ -73,12 +103,19 @@ final class CsvTransactionImportService
 
     private function column(array $headers, array $names): ?int
     {
-        foreach ($names as $name) { $index = array_search($name, $headers, true); if ($index !== false) return $index; }
+        foreach ($names as $name) {
+            foreach ($headers as $index => $header) {
+                if ($header === $name || str_starts_with($header, $name.'_')) return $index;
+            }
+        }
         return null;
     }
 
-    private function date(string $value): string
+    private function date(mixed $value): string
     {
+        if (is_numeric($value)) {
+            try { return CarbonImmutable::instance(ExcelDate::excelToDateTimeObject((float) $value))->toDateString(); } catch (\Throwable) {}
+        }
         $value = trim($value);
         foreach (['Y-m-d', 'd/m/Y', 'd-m-Y', 'd.m.Y', 'm/d/Y'] as $format) {
             try { $date = CarbonImmutable::createFromFormat('!'.$format, $value); if ($date !== false) return $date->toDateString(); } catch (\Throwable) {}
