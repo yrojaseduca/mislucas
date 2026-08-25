@@ -14,6 +14,8 @@ const error = ref('');
 const connectVisible = ref(false);
 const institutions = ref([]);
 const selectedInstitution = ref(null);
+const fileInput = ref(null);
+const importSummary = ref('');
 
 async function openConnect() {
     error.value = '';
@@ -46,16 +48,28 @@ async function sync(connection) {
 async function dismiss(item) {
     if (window.confirm(`¿Descartar "${item.description}" de la bandeja?`)) await store.dismissBankTransaction(item.id);
 }
+async function importCsv(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    loading.value = true; error.value = ''; importSummary.value = '';
+    try {
+        const result = await store.importCsv(file);
+        importSummary.value = `${result.imported} operaciones importadas${result.duplicates ? ` · ${result.duplicates} duplicadas omitidas` : ''}`;
+        if (result.errors.length) error.value = result.errors.slice(0, 5).join(' · ');
+    } catch (exception) { error.value = exception.response?.data?.message ?? 'No se pudo importar el CSV.'; }
+    finally { loading.value = false; event.target.value = ''; }
+}
 </script>
 
 <template>
   <section class="mb-8 rounded-2xl bg-white p-6 shadow-sm">
     <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-      <div><div class="flex items-center gap-2"><h2 class="text-xl font-bold">Bandeja bancaria</h2><Tag :value="String(dashboard.bank_inbox.length)" severity="info" /></div><p class="mt-1 text-sm text-slate-500">Revisa cada operación antes de añadirla a tus finanzas.</p></div>
-      <Button label="Vincular banco" icon="pi pi-link" :disabled="!dashboard.banking_configured" :loading="loading" @click="openConnect" />
+      <div><div class="flex items-center gap-2"><h2 class="text-xl font-bold">Bandeja de entrada</h2><Tag :value="String(dashboard.bank_inbox.length)" severity="info" /></div><p class="mt-1 text-sm text-slate-500">Revisa operaciones bancarias o importadas antes de añadirlas.</p></div>
+      <div class="flex flex-wrap gap-2"><input ref="fileInput" type="file" accept=".csv,text/csv" class="hidden" @change="importCsv" /><Button label="Importar CSV" icon="pi pi-upload" severity="secondary" :loading="loading" @click="fileInput.click()" /><Button label="Vincular banco" icon="pi pi-link" :disabled="!dashboard.banking_configured" :loading="loading" @click="openConnect" /></div>
     </div>
     <p v-if="!dashboard.banking_configured" class="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Configura tu aplicación personal de Enable Banking para habilitar la conexión. MisLucas nunca solicita ni almacena tus claves bancarias.</p>
     <p v-if="error" class="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{{ error }}</p>
+    <p v-if="importSummary" class="mb-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{{ importSummary }}</p>
     <div v-if="dashboard.workspace.bank_connections?.length" class="mb-5 flex flex-wrap gap-2">
       <Button v-for="connection in dashboard.workspace.bank_connections" :key="connection.id" :label="`Sincronizar ${connection.provider_name || 'banco'}`" icon="pi pi-refresh" size="small" severity="secondary" :loading="loading" @click="sync(connection)" />
     </div>

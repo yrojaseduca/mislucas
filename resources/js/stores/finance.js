@@ -82,6 +82,7 @@ export const useFinanceStore = defineStore('finance', {
         async increaseDebt(id,data){await axios.post(`/api/workspaces/${this.current.workspace.id}/debts/${id}/increases`,data);await this.select(this.current.workspace.id);},
         async deleteDebtIncrease(debtId,increaseId){await axios.delete(`/api/workspaces/${this.current.workspace.id}/debts/${debtId}/increases/${increaseId}`);await this.select(this.current.workspace.id);},
         async bankInstitutions(){return (await axios.get(`/api/workspaces/${this.current.workspace.id}/bank/institutions`)).data;},
+        async importCsv(file){const data=new FormData();data.append('file',file);const result=(await axios.post(`/api/workspaces/${this.current.workspace.id}/bank/import-csv`,data)).data;await this.select(this.current.workspace.id);return result;},
         async connectBank(institution){return (await axios.post(`/api/workspaces/${this.current.workspace.id}/bank/connect`,{institution_id:institution.id})).data.authorization_url;},
         async syncBank(connectionId){await axios.post(`/api/workspaces/${this.current.workspace.id}/bank/connections/${connectionId}/sync`);await this.select(this.current.workspace.id);},
         async acceptBankTransaction(id,movement){await axios.post(`/api/workspaces/${this.current.workspace.id}/bank-transactions/${id}/accept`,movement);await this.select(this.current.workspace.id);},

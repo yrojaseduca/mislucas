@@ -11,12 +11,26 @@ use App\Models\BankConnection;
 use App\Models\BankTransaction;
 use App\Models\Workspace;
 use App\Services\BankIntegrationService;
+use App\Services\CsvTransactionImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 final class BankingController extends Controller
 {
+    public function importCsv(WorkspaceMemberRequest $request, Workspace $workspace, CsvTransactionImportService $service): JsonResponse
+    {
+        $data = $request->validate(['file' => ['required', 'file', 'mimes:csv,txt', 'max:5120']]);
+
+        try {
+            return response()->json($service->import($workspace, (int) $request->user()->id, $data['file']));
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['file' => $exception->getMessage()]);
+        }
+    }
+
     public function institutions(WorkspaceMemberRequest $request, Workspace $workspace, BankIntegrationService $service): JsonResponse
     {
         return response()->json($service->institutions());

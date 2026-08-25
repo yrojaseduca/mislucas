@@ -43,6 +43,7 @@ Route::prefix('api')->group(function (): void {
         Route::post('/workspaces/{workspace}/debts/{debt}/increases', [WealthController::class, 'increase']);
         Route::delete('/workspaces/{workspace}/debts/{debt}/increases/{increase}', [WealthController::class, 'destroyIncrease']);
         Route::get('/workspaces/{workspace}/bank/institutions', [BankingController::class, 'institutions']);
+        Route::post('/workspaces/{workspace}/bank/import-csv', [BankingController::class, 'importCsv']);
         Route::post('/workspaces/{workspace}/bank/connect', [BankingController::class, 'connect']);
         Route::post('/workspaces/{workspace}/bank/connections/{connection}/sync', [BankingController::class, 'sync']);
         Route::post('/workspaces/{workspace}/bank-transactions/{bankTransaction}/accept', [BankingController::class, 'accept']);
