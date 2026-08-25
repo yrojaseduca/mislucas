@@ -99,7 +99,7 @@ async function submit() {
       </template>
       <div class="md:col-span-2"><label class="mb-2 block text-sm font-semibold">Nota opcional</label><Textarea v-model="form.notes" rows="2" class="w-full" /></div>
       <div v-if="!movement && !bankTransaction && !form.debt_id" class="flex items-center gap-3 rounded-xl bg-[#f6f7f2] p-4 md:col-span-2"><Checkbox v-model="form.recurring" input-id="recurring" binary /><label for="recurring"><b class="block">Movimiento recurrente</b><span class="text-sm text-slate-500">Se generará automáticamente en cada vencimiento.</span></label></div>
-      <p v-else-if="movement.recurring_transaction_id" class="rounded-xl bg-blue-50 p-3 text-sm text-blue-700 md:col-span-2">Estás editando solo esta aparición. La regla recurrente futura no cambiará.</p>
+      <p v-else-if="movement && movement.recurring_transaction_id" class="rounded-xl bg-blue-50 p-3 text-sm text-blue-700 md:col-span-2">Estás editando solo esta aparición. La regla recurrente futura no cambiará.</p>
       <template v-if="!movement && !bankTransaction && form.recurring">
         <div><label class="mb-2 block text-sm font-semibold">Frecuencia</label><Select v-model="form.frequency" :options="frequencyOptions" option-label="label" option-value="value" class="w-full" /></div>
         <div><label class="mb-2 block text-sm font-semibold">Finaliza (opcional)</label><DatePicker v-model="form.ends_on" date-format="dd/mm/yy" show-icon show-button-bar class="w-full" /></div>
