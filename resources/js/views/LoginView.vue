@@ -7,7 +7,7 @@ import Password from 'primevue/password';
 import { useFinanceStore } from '../stores/finance';
 
 const store = useFinanceStore();
-const form = reactive({ email: 'juan@example.com', password: 'password', remember: false });
+const form = reactive({ email: '', password: '', remember: false });
 const submitting = ref(false);
 const error = ref('');
 
@@ -40,7 +40,6 @@ async function submit() {
         <div class="mt-5 flex items-center gap-2"><Checkbox v-model="form.remember" input-id="remember" binary /><label for="remember" class="text-sm text-slate-600">Mantener mi sesión</label></div>
         <p v-if="error" class="mt-5 rounded-xl bg-red-50 p-3 text-sm text-red-700">{{ error }}</p>
         <Button type="submit" label="Entrar" icon="pi pi-arrow-right" icon-pos="right" :loading="submitting" class="mt-7 w-full" />
-        <div class="mt-6 rounded-xl bg-[#f6f7f2] p-4 text-sm text-slate-600"><b class="block text-slate-800">Cuenta de demostración</b>juan@example.com · password</div>
       </form>
     </section>
   </main>

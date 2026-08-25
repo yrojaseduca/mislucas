@@ -9,6 +9,8 @@ import BudgetDialog from './components/BudgetDialog.vue';
 import BaseBudgetPlanDialog from './components/BaseBudgetPlanDialog.vue';
 import WealthPanel from './components/WealthPanel.vue';
 import BankInbox from './components/BankInbox.vue';
+import InvitationDialog from './components/InvitationDialog.vue';
+import InvitationView from './views/InvitationView.vue';
 const store = useFinanceStore();
 const movementDialogVisible = ref(false);
 const selectedMovement = ref(null);
@@ -16,6 +18,8 @@ const selectedBankTransaction = ref(null);
 const budgetDialogVisible = ref(false);
 const basePlanDialogVisible = ref(false);
 const selectedBudget = ref(null);
+const invitationDialogVisible = ref(false);
+const invitationToken = window.location.pathname.match(/^\/invitacion\/([^/]+)$/)?.[1] ?? null;
 onMounted(() => store.bootstrap());
 const money = (cents) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: store.current?.workspace.currency ?? 'EUR' }).format((cents ?? 0) / 100);
 const title = computed(() => store.current?.workspace.type === 'business' ? 'Resultado del negocio' : 'Tu hogar, en equilibrio');
@@ -23,6 +27,7 @@ const incomes = computed(() => store.current?.transactions.filter((item) => item
 const expenses = computed(() => store.current?.transactions.filter((item) => item.type === 'expense') ?? []);
 const expectedResult = computed(() => (store.current?.plan.summary.expected_income ?? 0) - (store.current?.plan.summary.expected_expenses ?? 0));
 const monthLabel = computed(() => new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(new Date(`${store.current?.plan.month ?? store.planMonth}-02T12:00:00`)));
+const canInvite = computed(() => store.user?.is_superadmin || store.current?.workspace.members.some((member) => member.user_id === store.user?.id && member.role === 'owner'));
 function openBudget(budget = null) { selectedBudget.value = budget; budgetDialogVisible.value = true; }
 function openMovement(movement = null) { selectedBankTransaction.value = null; selectedMovement.value = movement; movementDialogVisible.value = true; }
 function openBankTransaction(transaction) { selectedMovement.value = null; selectedBankTransaction.value = transaction; movementDialogVisible.value = true; }
@@ -32,6 +37,7 @@ function shiftMonth(offset) { const [year, month] = store.planMonth.split('-').m
 
 <template>
   <div v-if="store.loading" class="grid min-h-screen place-items-center bg-[#183f35] text-white"><div class="text-center"><span class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[#d9ff85] text-xl font-bold text-[#183f35]">M</span><p>Preparando MisLucas…</p></div></div>
+  <InvitationView v-else-if="invitationToken" :token="invitationToken" />
   <LoginView v-else-if="!store.user" />
   <div v-else class="min-h-screen lg:flex">
     <aside class="bg-[#183f35] p-6 text-white lg:min-h-screen lg:w-72">
@@ -45,7 +51,7 @@ function shiftMonth(offset) { const [year, month] = store.planMonth.split('-').m
     </aside>
     <main class="mx-auto w-full max-w-6xl p-5 md:p-10">
       <div v-if="store.current">
-        <header class="mb-8 flex items-start justify-between"><div><p class="text-sm capitalize text-slate-500">{{ store.current.workspace.name }} · {{ monthLabel }}</p><h1 class="text-3xl font-bold tracking-tight">{{ title }}</h1></div><Button label="Nuevo movimiento" icon="pi pi-plus" @click="openMovement()" /></header>
+        <header class="mb-8 flex flex-wrap items-start justify-between gap-3"><div><p class="text-sm capitalize text-slate-500">{{ store.current.workspace.name }} · {{ monthLabel }}</p><h1 class="text-3xl font-bold tracking-tight">{{ title }}</h1></div><div class="flex gap-2"><Button v-if="canInvite" label="Invitar" icon="pi pi-user-plus" severity="secondary" @click="invitationDialogVisible = true" /><Button label="Nuevo movimiento" icon="pi pi-plus" @click="openMovement()" /></div></header>
         <section class="mb-8 grid gap-4 md:grid-cols-3">
           <article class="rounded-2xl bg-white p-6 shadow-sm"><p class="text-sm text-slate-500">Ingresos</p><strong class="mt-2 block text-2xl text-emerald-700">{{ money(store.current.summary.income) }}</strong></article>
           <article class="rounded-2xl bg-white p-6 shadow-sm"><p class="text-sm text-slate-500">Gastos</p><strong class="mt-2 block text-2xl">{{ money(store.current.summary.expenses) }}</strong></article>
@@ -72,5 +78,6 @@ function shiftMonth(offset) { const [year, month] = store.planMonth.split('-').m
     <MovementDialog v-if="store.current" v-model="movementDialogVisible" :dashboard="store.current" :movement="selectedMovement" :bank-transaction="selectedBankTransaction" />
     <BudgetDialog v-if="store.current" v-model="budgetDialogVisible" :dashboard="store.current" :budget="selectedBudget" />
     <BaseBudgetPlanDialog v-if="store.current" v-model="basePlanDialogVisible" :dashboard="store.current" />
+    <InvitationDialog v-if="store.current" v-model="invitationDialogVisible" />
   </div>
 </template>
