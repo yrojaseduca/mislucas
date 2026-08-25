@@ -1,4 +1,4 @@
-.PHONY: up down install migrate seed test lint build shell
+.PHONY: up down install migrate seed test lint build shell prod-up prod-down prod-migrate prod-logs
 up:
 	docker compose up -d --build
 down:
@@ -18,3 +18,11 @@ build:
 	docker compose run --rm node npm run build
 shell:
 	docker compose exec php sh
+prod-up:
+	docker compose -f docker-compose.prod.yml up -d --build
+prod-down:
+	docker compose -f docker-compose.prod.yml down
+prod-migrate:
+	docker compose -f docker-compose.prod.yml exec -T php php artisan migrate --force
+prod-logs:
+	docker compose -f docker-compose.prod.yml logs --tail=100

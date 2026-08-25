@@ -1,0 +1,81 @@
+services:
+  php:
+    build:
+      context: .
+      dockerfile: docker/prod.Dockerfile
+      target: php
+    env_file: .env
+    environment: &laravel-environment
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: mislucas
+      DB_USERNAME: mislucas
+      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD in .env}
+    restart: unless-stopped
+    volumes:
+      - ./storage/app/private:/var/www/html/storage/app/private:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/prod.Dockerfile
+      target: php
+    command: php artisan schedule:work
+    env_file: .env
+    environment: *laravel-environment
+    restart: unless-stopped
+    volumes:
+      - ./storage/app/private:/var/www/html/storage/app/private:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  queue:
+    build:
+      context: .
+      dockerfile: docker/prod.Dockerfile
+      target: php
+    command: php artisan queue:work --sleep=3 --tries=3 --timeout=90
+    env_file: .env
+    environment: *laravel-environment
+    restart: unless-stopped
+    volumes:
+      - ./storage/app/private:/var/www/html/storage/app/private:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/prod.Dockerfile
+      target: nginx
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    depends_on:
+      - php
+
+  db:
+    image: mariadb:11.4
+    environment:
+      MARIADB_DATABASE: mislucas
+      MARIADB_USER: mislucas
+      MARIADB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD in .env}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Define DB_ROOT_PASSWORD in .env}
+    restart: unless-stopped
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h localhost -p$$MARIADB_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  db-data:
