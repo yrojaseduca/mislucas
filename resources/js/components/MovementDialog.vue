@@ -17,23 +17,27 @@ const store = useFinanceStore();
 const submitting = ref(false);
 const errors = ref({});
 const today = () => new Date(new Date().setHours(12, 0, 0, 0));
-const form = reactive({ type: 'expense', amount: null, occurred_at: today(), description: '', category_id: null, account_id: null, paid_by_member_id: null, split_mode: 'equal', assigned_member_id: null, notes: '', recurring: false, frequency: 'monthly', ends_on: null, debt_id: null, interest_amount: 0 });
+const form = reactive({ type: 'expense', amount: null, occurred_at: today(), description: '', category_id: null, account_id: null, paid_by_member_id: null, split_mode: 'single', assigned_member_id: null, custom_percentages: {}, notes: '', recurring: false, frequency: 'monthly', ends_on: null, debt_id: null, interest_amount: 0 });
 const members = computed(() => props.dashboard.workspace.members ?? []);
 const debts = computed(() => props.dashboard.workspace.debts?.filter((debt) => debt.is_active) ?? []);
 const expenseCategories = computed(() => props.dashboard.workspace.categories?.filter((category) => category.kind === form.type) ?? []);
-const splitOptions = [{ label: 'A partes iguales', value: 'equal' }, { label: 'Solo una persona', value: 'single' }];
+const splitOptions = [{ label: 'Solo una persona', value: 'single' }, { label: 'A partes iguales', value: 'equal' }, { label: 'Porcentajes personalizados', value: 'custom' }];
 const typeOptions = [{ label: 'Gasto', value: 'expense' }, { label: 'Ingreso', value: 'income' }];
 const frequencyOptions = [{ label: 'Cada semana', value: 'weekly' }, { label: 'Cada mes', value: 'monthly' }, { label: 'Cada año', value: 'yearly' }];
 
 watch(visible, (isOpen) => {
     if (!isOpen) return;
     const source = props.movement ?? props.bankTransaction;
+    const sourceSplits = source?.splits ?? [];
+    const percentages = Object.fromEntries(members.value.map((member) => [member.id, Number(sourceSplits.find((split) => split.member_id === member.id)?.percentage ?? 0)]));
+    const splitPercentages = sourceSplits.map((split) => Number(split.percentage));
+    const isEqualSplit = splitPercentages.length > 1 && splitPercentages.every((percentage) => Math.abs(percentage - (100 / splitPercentages.length)) < 0.01);
     Object.assign(form, source ? {
         type: source.type, amount: source.amount / 100, occurred_at: new Date(`${source.occurred_at.slice(0, 10)}T12:00:00`), description: source.description,
         category_id: source.category_id ?? null, account_id: source.account_id ?? props.dashboard.workspace.accounts?.[0]?.id ?? null, paid_by_member_id: source.paid_by_member_id ?? members.value[0]?.id ?? null,
-        split_mode: source.splits?.length === 1 ? 'single' : 'equal', assigned_member_id: source.splits?.[0]?.member_id ?? members.value[0]?.id,
+        split_mode: sourceSplits.length <= 1 ? 'single' : isEqualSplit ? 'equal' : 'custom', assigned_member_id: sourceSplits[0]?.member_id ?? members.value[0]?.id, custom_percentages: percentages,
         notes: source.notes ?? '', recurring: false, frequency: 'monthly', ends_on: null, debt_id: source.debt_payment?.debt_id ?? null, interest_amount: (source.debt_payment?.interest_amount ?? 0) / 100,
-    } : { type: 'expense', amount: null, occurred_at: today(), description: '', category_id: null, account_id: props.dashboard.workspace.accounts?.[0]?.id ?? null, paid_by_member_id: members.value[0]?.id ?? null, split_mode: 'equal', assigned_member_id: members.value[0]?.id ?? null, notes: '', recurring: false, frequency: 'monthly', ends_on: null, debt_id: null, interest_amount: 0 });
+    } : { type: 'expense', amount: null, occurred_at: today(), description: '', category_id: null, account_id: props.dashboard.workspace.accounts?.[0]?.id ?? null, paid_by_member_id: members.value[0]?.id ?? null, split_mode: 'single', assigned_member_id: members.value[0]?.id ?? null, custom_percentages: Object.fromEntries(members.value.map((member) => [member.id, 0])), notes: '', recurring: false, frequency: 'monthly', ends_on: null, debt_id: null, interest_amount: 0 });
     errors.value = {};
 });
 watch(() => form.debt_id, (id) => {
@@ -45,6 +49,16 @@ watch(() => form.debt_id, (id) => {
 function buildSplits(amount) {
     if (form.type === 'income') return [];
     if (form.split_mode === 'single') return [{ member_id: form.assigned_member_id, amount, percentage: 100 }];
+    if (form.split_mode === 'custom') {
+        const selected = members.value.map((member) => ({ member_id: member.id, percentage: Number(form.custom_percentages[member.id] ?? 0) })).filter((split) => split.percentage > 0);
+        const calculated = selected.map((split, index) => {
+            const exactAmount = amount * split.percentage / 100;
+            return { ...split, amount: Math.floor(exactAmount), fraction: exactAmount % 1, index };
+        });
+        let remainder = amount - calculated.reduce((total, split) => total + split.amount, 0);
+        [...calculated].sort((a, b) => b.fraction - a.fraction).forEach((split) => { if (remainder-- > 0) calculated[split.index].amount++; });
+        return calculated.map(({ fraction, index, ...split }) => split);
+    }
     const base = Math.floor(amount / members.value.length);
     let remainder = amount - (base * members.value.length);
     return members.value.map((member) => ({ member_id: member.id, amount: base + (remainder-- > 0 ? 1 : 0), percentage: Number((100 / members.value.length).toFixed(4)) }));
@@ -54,6 +68,12 @@ async function submit() {
     submitting.value = true;
     errors.value = {};
     const amount = Math.round((form.amount ?? 0) * 100);
+    const percentageTotal = members.value.reduce((total, member) => total + Number(form.custom_percentages[member.id] ?? 0), 0);
+    if (form.type === 'expense' && form.split_mode === 'custom' && Math.abs(percentageTotal - 100) > 0.001) {
+        errors.value = { splits: ['Los porcentajes del reparto deben sumar exactamente 100 %.'] };
+        submitting.value = false;
+        return;
+    }
     try {
         const payload = {
             type: form.type,
@@ -96,6 +116,10 @@ async function submit() {
       <template v-if="form.type === 'expense'">
         <div><label class="mb-2 block text-sm font-semibold">Reparto</label><Select v-model="form.split_mode" :options="splitOptions" option-label="label" option-value="value" class="w-full" /></div>
         <div v-if="form.split_mode === 'single'"><label class="mb-2 block text-sm font-semibold">Asignado a</label><Select v-model="form.assigned_member_id" :options="members" option-label="display_name" option-value="id" class="w-full" required /></div>
+        <div v-if="form.split_mode === 'custom'" class="rounded-xl bg-[#f6f7f2] p-4 md:col-span-2">
+          <div class="mb-3 flex items-center justify-between"><b>Porcentaje por persona</b><span class="text-sm" :class="Math.abs(members.reduce((total, member) => total + Number(form.custom_percentages[member.id] ?? 0), 0) - 100) < 0.001 ? 'text-emerald-700' : 'text-red-600'">Total: {{ members.reduce((total, member) => total + Number(form.custom_percentages[member.id] ?? 0), 0) }} %</span></div>
+          <div class="grid gap-3 sm:grid-cols-2"><div v-for="member in members" :key="member.id"><label class="mb-1 block text-sm font-medium">{{ member.display_name }}</label><InputNumber v-model="form.custom_percentages[member.id]" suffix=" %" :min="0" :max="100" :min-fraction-digits="0" :max-fraction-digits="2" class="w-full" /></div></div>
+        </div>
       </template>
       <div class="md:col-span-2"><label class="mb-2 block text-sm font-semibold">Nota opcional</label><Textarea v-model="form.notes" rows="2" class="w-full" /></div>
       <div v-if="!movement && !bankTransaction && !form.debt_id" class="flex items-center gap-3 rounded-xl bg-[#f6f7f2] p-4 md:col-span-2"><Checkbox v-model="form.recurring" input-id="recurring" binary /><label for="recurring"><b class="block">Movimiento recurrente</b><span class="text-sm text-slate-500">Se generará automáticamente en cada vencimiento.</span></label></div>
