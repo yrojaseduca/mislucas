@@ -33,6 +33,10 @@ async function accept() {
         error.value = errors ? Object.values(errors)[0][0] : (exception.response?.data?.message ?? 'No se pudo aceptar la invitación.');
     } finally { submitting.value = false; }
 }
+async function changeAccount() {
+    await store.logout();
+    error.value = '';
+}
 </script>
 
 <template>
@@ -44,14 +48,20 @@ async function accept() {
         <p class="text-sm font-semibold text-emerald-700">Te han invitado</p>
         <h1 class="mt-2 text-3xl font-bold">Únete a {{ invitation.workspace.name }}</h1>
         <p class="mt-3 text-slate-500">La invitación corresponde a <b>{{ invitation.email }}</b>.</p>
-        <form class="mt-7" @submit.prevent="accept">
-          <template v-if="!store.user">
+        <div v-if="store.user && store.user.email.toLowerCase() !== invitation.email.toLowerCase()" class="mt-7 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
+          <p>Ahora estás conectada como <b>{{ store.user.email }}</b>, pero este enlace es para <b>{{ invitation.email }}</b>.</p>
+          <Button label="Cerrar sesión y continuar" icon="pi pi-sign-out" severity="secondary" class="mt-4 w-full" @click="changeAccount" />
+        </div>
+        <form v-else class="mt-7" @submit.prevent="accept">
+          <template v-if="!store.user && !invitation.has_account">
             <label for="invite-name" class="mb-2 block text-sm font-semibold">Tu nombre</label>
             <InputText id="invite-name" v-model="form.name" class="w-full" required />
-            <label for="invite-password" class="mb-2 mt-5 block text-sm font-semibold">Crea una contraseña</label>
-            <Password input-id="invite-password" v-model="form.password" toggle-mask fluid required />
-            <label for="invite-password-confirmation" class="mb-2 mt-5 block text-sm font-semibold">Repite la contraseña</label>
-            <Password input-id="invite-password-confirmation" v-model="form.password_confirmation" :feedback="false" toggle-mask fluid required />
+          </template>
+          <template v-if="!store.user">
+            <label for="invite-password" class="mb-2 mt-5 block text-sm font-semibold">{{ invitation.has_account ? 'Contraseña' : 'Crea una contraseña' }}</label>
+            <Password input-id="invite-password" v-model="form.password" :feedback="!invitation.has_account" toggle-mask fluid required />
+            <template v-if="!invitation.has_account"><label for="invite-password-confirmation" class="mb-2 mt-5 block text-sm font-semibold">Repite la contraseña</label><Password input-id="invite-password-confirmation" v-model="form.password_confirmation" :feedback="false" toggle-mask fluid required /></template>
+            <p v-else class="mt-3 text-sm text-slate-500">Ya existe una cuenta con este correo. Introduce su contraseña para aceptar la invitación.</p>
           </template>
           <p v-else class="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">Aceptarás como {{ store.user.name }} ({{ store.user.email }}).</p>
           <p v-if="error" class="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{{ error }}</p>

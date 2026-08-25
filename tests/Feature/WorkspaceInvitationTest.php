@@ -48,6 +48,22 @@ final class WorkspaceInvitationTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_existing_user_can_sign_in_and_accept_invitation(): void
+    {
+        $owner = User::factory()->create();
+        $invited = User::factory()->create(['email' => 'existente@example.com', 'password' => 'secret123']);
+        $workspace = Workspace::query()->create(['name' => 'Casa', 'type' => 'household', 'currency' => 'EUR']);
+        $workspace->members()->create(['user_id' => $owner->id, 'display_name' => $owner->name, 'role' => 'owner']);
+        $url = $this->actingAs($owner)->postJson("/api/workspaces/{$workspace->id}/invitations", ['email' => $invited->email])->json('url');
+        Auth::logout();
+        $token = basename($url);
+
+        $this->getJson("/api/invitations/{$token}")->assertOk()->assertJsonPath('has_account', true);
+        $this->postJson("/api/invitations/{$token}/accept", ['password' => 'secret123'])
+            ->assertOk()->assertJsonPath('user.id', $invited->id);
+        $this->assertTrue($workspace->members()->where('user_id', $invited->id)->exists());
+    }
+
     public function test_superadmin_can_see_all_workspaces_and_invite(): void
     {
         $admin = User::factory()->create(['is_superadmin' => true]);

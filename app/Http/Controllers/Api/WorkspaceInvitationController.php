@@ -52,6 +52,7 @@ final class WorkspaceInvitationController extends Controller
             'workspace' => $invitation->workspace->only(['id', 'name', 'type']),
             'email' => $invitation->email,
             'expires_at' => $invitation->expires_at,
+            'has_account' => User::query()->where('email', $invitation->email)->exists(),
         ]);
     }
 
@@ -65,15 +66,22 @@ final class WorkspaceInvitationController extends Controller
                 'email' => 'La invitación pertenece a otra dirección de correo.',
             ]));
         } else {
-            $data = $request->validate([
-                'name' => ['required', 'string', 'max:255'],
-                'password' => ['required', 'confirmed', Password::min(8)],
-            ]);
             $user = User::query()->where('email', $invitation->email)->first();
             if ($user) {
-                throw ValidationException::withMessages(['email' => 'Ya existe una cuenta con este correo. Inicia sesión antes de aceptar la invitación.']);
+                $data = $request->validate(['password' => ['required', 'string']]);
+                if (! Hash::check($data['password'], $user->password)) {
+                    throw ValidationException::withMessages(['password' => 'La contraseña no es correcta.']);
+                }
+                if (! $user->is_active) {
+                    throw ValidationException::withMessages(['email' => 'Esta cuenta está desactivada.']);
+                }
+            } else {
+                $data = $request->validate([
+                    'name' => ['required', 'string', 'max:255'],
+                    'password' => ['required', 'confirmed', Password::min(8)],
+                ]);
+                $user = User::query()->create(['name' => $data['name'], 'email' => $invitation->email, 'password' => Hash::make($data['password'])]);
             }
-            $user = User::query()->create(['name' => $data['name'], 'email' => $invitation->email, 'password' => Hash::make($data['password'])]);
             Auth::login($user);
             $request->session()->regenerate();
         }
