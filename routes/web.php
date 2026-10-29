@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('api')->group(function (): void {
     Route::post('/login', [AuthController::class, 'login'])->middleware('guest');
+    Route::post('/register', [AuthController::class, 'register'])->middleware('guest');
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('guest');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('guest');
     Route::get('/invitations/{token}', [WorkspaceInvitationController::class, 'show']);
     Route::post('/invitations/{token}/accept', [WorkspaceInvitationController::class, 'accept']);
 

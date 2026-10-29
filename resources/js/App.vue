@@ -45,25 +45,27 @@ async function enterWorkspace(id) { adminMode.value = false; await store.select(
   <InvitationView v-else-if="invitationToken" :token="invitationToken" />
   <LoginView v-else-if="!store.user" />
   <div v-else class="min-h-screen lg:flex">
-    <aside class="bg-[#183f35] p-6 text-white lg:min-h-screen lg:w-72">
-      <div class="mb-10 flex items-center gap-3 text-xl font-bold"><span class="grid h-10 w-10 place-items-center rounded-xl bg-[#d9ff85] text-[#183f35]">M</span> MisLucas</div>
+    <aside class="bg-[#183f35] p-3 text-white lg:min-h-screen lg:w-72 lg:p-6">
+      <div class="mb-5 flex items-center gap-3 text-xl font-bold lg:mb-10"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#d9ff85] text-[#183f35]">M</span> MisLucas</div>
       <p class="mb-3 text-xs font-semibold uppercase tracking-[.18em] text-emerald-200">Mis espacios</p>
-      <button v-for="space in store.workspaces" :key="space.id" @click="enterWorkspace(space.id)" class="mb-2 flex w-full items-center gap-3 rounded-xl p-3 text-left transition" :class="!adminMode && store.current?.workspace.id === space.id ? 'bg-white/15' : 'hover:bg-white/10'">
+      <div class="-mx-1 flex gap-2 overflow-x-auto pb-2 lg:block lg:overflow-visible lg:pb-0">
+      <button v-for="space in store.workspaces" :key="space.id" @click="enterWorkspace(space.id)" class="mb-0 flex min-w-[9.5rem] shrink-0 items-center gap-3 rounded-xl p-3 text-left transition lg:mb-2 lg:w-full" :class="!adminMode && store.current?.workspace.id === space.id ? 'bg-white/15' : 'hover:bg-white/10'">
         <i :class="space.type === 'business' ? 'pi pi-briefcase' : 'pi pi-home'" />
         <span><b class="block">{{ space.name }}</b><small class="text-emerald-100">{{ space.members.length }} participantes</small></span>
       </button>
+      </div>
       <Button v-if="store.user?.is_superadmin" label="Crear espacio" icon="pi pi-plus" severity="secondary" text class="mt-2 w-full !justify-start !text-white" @click="workspaceDialogVisible = true" />
       <Button v-if="store.user?.is_superadmin" label="Administración" icon="pi pi-cog" severity="secondary" text class="mt-1 w-full !justify-start !text-white" @click="adminMode = true" />
-      <div class="mt-10 border-t border-white/15 pt-5"><p class="mb-3 text-sm text-emerald-100">{{ store.user.name }}</p><Button label="Cerrar sesión" icon="pi pi-sign-out" severity="secondary" text class="w-full !justify-start !text-white" @click="store.logout" /></div>
+      <div class="mt-4 flex items-center justify-between border-t border-white/15 pt-4 lg:mt-10 lg:block lg:pt-5"><p class="mb-0 text-sm text-emerald-100 lg:mb-3">{{ store.user.name }}</p><Button label="Cerrar sesión" icon="pi pi-sign-out" severity="secondary" text class="!p-2 !text-white lg:w-full lg:!justify-start" @click="store.logout" /></div>
     </aside>
-    <main class="mx-auto w-full max-w-6xl p-5 md:p-10">
+    <main class="mx-auto w-full max-w-6xl p-3 pb-8 sm:p-5 md:p-10">
       <AdminPanel v-if="adminMode" @updated="store.loadWorkspaces" />
       <div v-else-if="store.current">
         <header class="mb-8 flex flex-wrap items-start justify-between gap-3"><div><p class="text-sm capitalize text-slate-500">{{ store.current.workspace.name }} · {{ monthLabel }}</p><h1 class="text-3xl font-bold tracking-tight">{{ title }}</h1></div><div class="flex gap-2"><Button v-if="canInvite" label="Invitar" icon="pi pi-user-plus" severity="secondary" @click="invitationDialogVisible = true" /><Button label="Nuevo movimiento" icon="pi pi-plus" @click="openMovement()" /></div></header>
-        <section class="mb-8 grid gap-4 md:grid-cols-3">
-          <article class="rounded-2xl bg-white p-6 shadow-sm"><p class="text-sm text-slate-500">Ingresos</p><strong class="mt-2 block text-2xl text-emerald-700">{{ money(store.current.summary.income) }}</strong></article>
-          <article class="rounded-2xl bg-white p-6 shadow-sm"><p class="text-sm text-slate-500">Gastos</p><strong class="mt-2 block text-2xl">{{ money(store.current.summary.expenses) }}</strong></article>
-          <article class="rounded-2xl bg-[#d9ff85] p-6 shadow-sm"><p class="text-sm text-[#315347]">Resultado</p><strong class="mt-2 block text-2xl">{{ money(store.current.summary.result) }}</strong></article>
+        <section class="mb-6 grid grid-cols-3 gap-2 sm:gap-4 md:mb-8">
+          <article class="rounded-2xl bg-white p-3 shadow-sm sm:p-6"><p class="text-xs text-slate-500 sm:text-sm">Ingresos</p><strong class="mt-2 block text-base text-emerald-700 sm:text-2xl">{{ money(store.current.summary.income) }}</strong></article>
+          <article class="rounded-2xl bg-white p-3 shadow-sm sm:p-6"><p class="text-xs text-slate-500 sm:text-sm">Gastos</p><strong class="mt-2 block text-base sm:text-2xl">{{ money(store.current.summary.expenses) }}</strong></article>
+          <article class="rounded-2xl bg-[#d9ff85] p-3 shadow-sm sm:p-6"><p class="text-xs text-[#315347] sm:text-sm">Resultado</p><strong class="mt-2 block text-base sm:text-2xl">{{ money(store.current.summary.result) }}</strong></article>
         </section>
         <BankInbox :dashboard="store.current" :money="money" @accept="openBankTransaction" />
         <section class="mb-8 rounded-2xl bg-white p-6 shadow-sm">

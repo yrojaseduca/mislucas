@@ -19,6 +19,16 @@ export const useFinanceStore = defineStore('finance', {
             this.applySession((await axios.post('/api/login', credentials)).data);
             await this.loadWorkspaces();
         },
+        async register(credentials) {
+            this.applySession((await axios.post('/api/register', credentials)).data);
+            await this.loadWorkspaces();
+        },
+        async forgotPassword(email) {
+            return (await axios.post('/api/forgot-password', { email })).data;
+        },
+        async resetPassword(credentials) {
+            return (await axios.post('/api/reset-password', credentials)).data;
+        },
         applySession(session) {
             this.user = session.user;
             axios.defaults.headers.common['X-CSRF-TOKEN'] = session.csrf_token;
