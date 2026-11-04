@@ -5,14 +5,14 @@ import Select from 'primevue/select';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = defineProps({ dashboard: { type: Object, required: true }, workspaces: { type: Array, default: () => [] }, user: { type: Object, required: true }, canInvite: { type: Boolean, default: false }, money: { type: Function, required: true }, monthLabel: { type: String, required: true } });
-const emit = defineEmits(['movement', 'budget', 'plan', 'group', 'bank', 'month', 'workspace', 'create-workspace', 'invite', 'import-bank', 'connect-bank', 'add-debt', 'add-investment', 'admin', 'logout']);
+const emit = defineEmits(['movement', 'delete-movement', 'budget', 'plan', 'group', 'bank', 'month', 'workspace', 'create-workspace', 'invite', 'import-bank', 'connect-bank', 'add-debt', 'add-investment', 'admin', 'logout']);
 const showAllMovements = ref(false);
 const movementFilter = ref('all');
 const accountMenuOpen = ref(false);
 const accountMenuRef = ref(null);
 const mockMode = new URLSearchParams(window.location.search).get('mock');
 const wealthMock = mockMode === 'wealth' || mockMode === 'dashboard';
-const dashboardMock = mockMode === 'dashboard';
+const dashboardMock = mockMode === 'dashboard' || mockMode === 'movements';
 const mockDebts = Array.from({ length: 8 }, (_, index) => ({ id: `mock-debt-${index}`, name: ['Hipoteca', 'Coche', 'Préstamo familiar', 'Tarjeta', 'Reforma', 'Estudios', 'Viaje', 'Otro préstamo'][index], outstanding_balance: (index + 1) * 125000, is_active: true }));
 const mockInvestments = Array.from({ length: 8 }, (_, index) => ({ id: `mock-investment-${index}`, name: ['Indexado global', 'S&P 500', 'Bitcoin', 'Bonos', 'Acciones', 'Fondo europeo', 'Inmueble', 'Plan ahorro'][index], quantity: index + 1, current_price: (index + 2) * 8500, average_cost: (index + 1) * 7000 }));
 const mockTransactions = Array.from({ length: 12 }, (_, index) => ({ id: `mock-transaction-${index}`, type: index % 4 === 0 ? 'income' : 'expense', amount: (index + 1) * 1250, description: ['Mercadona', 'Restaurante', 'Internet', 'Transporte', 'Salario', 'Farmacia', 'Gasolina', 'Alquiler', 'Luz', 'Supermercado', 'Seguro', 'Ocio'][index], occurred_at: `2026-11-${String(28 - index).padStart(2, '0')}`, category: { name: index % 4 === 0 ? 'Ingresos' : 'Gastos' }, payer: { display_name: index % 2 === 0 ? 'Juan' : 'María' } }));
@@ -71,11 +71,11 @@ onBeforeUnmount(() => {
         <button v-for="filter in [{ value: 'all', label: 'Todos' }, { value: 'expense', label: 'Gastos' }, { value: 'income', label: 'Ingresos' }]" :key="filter.value" class="min-h-10 rounded-lg px-2 text-xs font-bold transition-colors" :class="movementFilter === filter.value ? 'bg-white text-[#123B4A] shadow-sm' : 'text-[#64748B]'" :aria-pressed="movementFilter === filter.value" @click="movementFilter = filter.value; showAllMovements = false">{{ filter.label }}</button>
       </div>
       <div v-if="recent.length" class="divide-y divide-slate-100">
-        <button v-for="item in recent" :key="item.id" class="flex min-h-[4.25rem] w-full items-center gap-3 py-3 text-left" @click="emit('movement', item)">
+        <div v-for="item in recent" :key="item.id" class="flex min-h-[4.25rem] w-full items-center gap-2 py-3 text-left" role="button" tabindex="0" @click="emit('movement', item)" @keydown.enter="emit('movement', item)" @keydown.space.prevent="emit('movement', item)">
           <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl" :class="item.type === 'income' ? 'bg-emerald-50 text-[#16805D]' : 'bg-[#FFE7ED] text-[#F1073B]'"><i :class="item.type === 'income' ? 'pi pi-arrow-down-left' : 'pi pi-shopping-cart'" /></span>
-          <span class="min-w-0 flex-1"><b class="block truncate text-sm text-[#172D38]">{{ item.description }}</b><small class="block truncate text-xs text-[#64748B]">{{ item.category?.name ?? 'Sin categoría' }} · {{ item.occurred_at.slice(0, 10) }}<span v-if="item.payer"> · {{ item.payer.display_name }}</span></small></span>
-          <span class="shrink-0 text-right"><b class="block text-sm" :class="item.type === 'income' ? 'text-[#16805D]' : 'text-[#D94F45]'">{{ item.type === 'income' ? '+' : '-' }}{{ money(item.amount) }}</b><i class="pi pi-angle-right text-xs text-slate-300" /></span>
-        </button>
+          <span class="min-w-0 flex-1"><b class="block truncate text-sm text-[#172D38]">{{ item.description }}</b><small class="block truncate text-xs text-[#64748B]">{{ item.category?.name ?? 'Sin categoría' }} · {{ item.occurred_at.slice(0, 10) }}<span v-if="item.payer"> · {{ item.payer.display_name }}</span><span v-if="item.reassigned_from_user_id" class="font-semibold text-[#C58B28]"> · Reasignado</span></small></span>
+          <span class="flex shrink-0 items-center gap-1"><span class="text-right"><b class="block text-sm whitespace-nowrap" :class="item.type === 'income' ? 'text-[#16805D]' : 'text-[#D94F45]'">{{ item.type === 'income' ? '+' : '-' }}{{ money(item.amount) }}</b></span><button class="grid h-9 w-9 place-items-center rounded-lg text-[#2A7F87] hover:bg-[#F5F8F7]" aria-label="Editar movimiento" @click.stop="emit('movement', item)"><i class="pi pi-pencil text-xs" /></button><button class="grid h-9 w-9 place-items-center rounded-lg text-[#D94F45] hover:bg-rose-50" aria-label="Borrar movimiento" @click.stop="emit('delete-movement', item)"><i class="pi pi-trash text-xs" /></button></span>
+        </div>
       </div>
       <p v-else class="py-8 text-center text-sm text-[#64748B]">Todavía no hay movimientos este mes.</p>
     </section>

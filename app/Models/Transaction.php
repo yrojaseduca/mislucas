@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 final class Transaction extends Model
 {
-    protected $fillable = ['recurring_transaction_id', 'workspace_id', 'account_id', 'category_id', 'paid_by_member_id', 'created_by_user_id', 'type', 'amount', 'occurred_at', 'description', 'notes'];
+    protected $fillable = ['recurring_transaction_id', 'workspace_id', 'account_id', 'category_id', 'paid_by_member_id', 'created_by_user_id', 'reassigned_from_user_id', 'type', 'amount', 'occurred_at', 'description', 'notes'];
 
     protected function casts(): array
     {

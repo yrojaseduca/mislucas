@@ -7,6 +7,7 @@ import Select from 'primevue/select';
 import { useFinanceStore } from '../stores/finance';
 
 const visible = defineModel({ type: Boolean, default: false });
+const emit = defineEmits(['created']);
 const store = useFinanceStore();
 const form = reactive({ name: '', type: 'household', currency: 'EUR' });
 const types = [{ label: 'Hogar', value: 'household' }, { label: 'Negocio', value: 'business' }];
@@ -20,7 +21,7 @@ watch(visible, (value) => {
 async function submit() {
     loading.value = true;
     error.value = '';
-    try { await store.createWorkspace(form); visible.value = false; }
+    try { await store.createWorkspace(form); visible.value = false; emit('created'); }
     catch (exception) { error.value = exception.response?.data?.message ?? 'No se pudo crear el espacio.'; }
     finally { loading.value = false; }
 }

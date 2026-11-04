@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -25,7 +26,7 @@ final class AdminController extends Controller
         $this->authorizeAdmin($request);
 
         return response()->json([
-            'users' => User::query()->with(['memberships.workspace:id,name'])->orderBy('name')->get(),
+            'users' => User::query()->with(['memberships.workspace:id,name'])->withCount(['createdTransactions as transactions_count'])->orderBy('name')->get(),
             'workspaces' => Workspace::query()->withCount(['members', 'transactions'])->with('categories')->orderBy('name')->get(),
         ]);
     }
@@ -46,6 +47,19 @@ final class AdminController extends Controller
         return response()->json($user->fresh()->load('memberships.workspace:id,name'));
     }
 
+    public function destroyUser(Request $request, User $user): JsonResponse
+    {
+        $this->authorizeAdmin($request);
+        abort_if($user->is($request->user()), 422, 'No puedes eliminar tu propia cuenta.');
+        DB::transaction(function () use ($request, $user): void {
+            DB::table('transactions')->where('created_by_user_id', $user->id)->update(['created_by_user_id' => $request->user()->id, 'reassigned_from_user_id' => $user->id]);
+            DB::table('recurring_transactions')->where('created_by_user_id', $user->id)->update(['created_by_user_id' => $request->user()->id]);
+            $user->delete();
+        });
+
+        return response()->json([], 204);
+    }
+
     public function updateWorkspace(Request $request, Workspace $workspace): JsonResponse
     {
         $this->authorizeAdmin($request);
@@ -63,6 +77,14 @@ final class AdminController extends Controller
         ]);
 
         return response()->json($workspace->fresh()->loadCount(['members', 'transactions'])->load('categories'));
+    }
+
+    public function destroyWorkspace(Request $request, Workspace $workspace): JsonResponse
+    {
+        $this->authorizeAdmin($request);
+        $workspace->delete();
+
+        return response()->json([], 204);
     }
 
     public function storeCategory(Request $request, Workspace $workspace): JsonResponse

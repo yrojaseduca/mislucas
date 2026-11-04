@@ -30,7 +30,9 @@ Route::prefix('api')->group(function (): void {
         Route::post('/workspaces/{workspace}/invitations', [WorkspaceInvitationController::class, 'store']);
         Route::get('/admin', [AdminController::class, 'index']);
         Route::put('/admin/users/{user}', [AdminController::class, 'updateUser']);
+        Route::delete('/admin/users/{user}', [AdminController::class, 'destroyUser']);
         Route::put('/admin/workspaces/{workspace}', [AdminController::class, 'updateWorkspace']);
+        Route::delete('/admin/workspaces/{workspace}', [AdminController::class, 'destroyWorkspace']);
         Route::post('/admin/workspaces/{workspace}/categories', [AdminController::class, 'storeCategory']);
         Route::put('/admin/workspaces/{workspace}/categories/{category}', [AdminController::class, 'updateCategory']);
         Route::delete('/admin/workspaces/{workspace}/categories/{category}', [AdminController::class, 'destroyCategory']);

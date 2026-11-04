@@ -57,6 +57,11 @@ class User extends Authenticatable
         return $this->hasMany(WorkspaceMember::class);
     }
 
+    public function createdTransactions()
+    {
+        return $this->hasMany(Transaction::class, 'created_by_user_id');
+    }
+
     public function sendPasswordResetNotification($token): void
     {
         $this->notify(new ResetPasswordNotification($token));
