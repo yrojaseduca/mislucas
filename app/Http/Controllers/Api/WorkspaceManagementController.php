@@ -15,8 +15,6 @@ final class WorkspaceManagementController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
-        abort_unless($request->user()->is_superadmin, 403);
-
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'type' => ['required', Rule::in(['household', 'business'])],

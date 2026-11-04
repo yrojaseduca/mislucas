@@ -11,7 +11,7 @@ import Textarea from 'primevue/textarea';
 import { useFinanceStore } from '../stores/finance';
 
 const visible = defineModel({ type: Boolean, default: false });
-const props = defineProps({ dashboard: { type: Object, required: true }, movement: { type: Object, default: null }, bankTransaction: { type: Object, default: null } });
+const props = defineProps({ dashboard: { type: Object, required: true }, movement: { type: Object, default: null }, bankTransaction: { type: Object, default: null }, initialType: { type: String, default: 'expense' } });
 const emit = defineEmits(['saved']);
 const store = useFinanceStore();
 const submitting = ref(false);
@@ -37,7 +37,7 @@ watch(visible, (isOpen) => {
         category_id: source.category_id ?? null, account_id: source.account_id ?? props.dashboard.workspace.accounts?.[0]?.id ?? null, paid_by_member_id: source.paid_by_member_id ?? members.value[0]?.id ?? null,
         split_mode: sourceSplits.length <= 1 ? 'single' : isEqualSplit ? 'equal' : 'custom', assigned_member_id: sourceSplits[0]?.member_id ?? members.value[0]?.id, custom_percentages: percentages,
         notes: source.notes ?? '', recurring: false, frequency: 'monthly', ends_on: null, debt_id: source.debt_payment?.debt_id ?? null, interest_amount: (source.debt_payment?.interest_amount ?? 0) / 100,
-    } : { type: 'expense', amount: null, occurred_at: today(), description: '', category_id: null, account_id: props.dashboard.workspace.accounts?.[0]?.id ?? null, paid_by_member_id: members.value[0]?.id ?? null, split_mode: 'single', assigned_member_id: members.value[0]?.id ?? null, custom_percentages: Object.fromEntries(members.value.map((member) => [member.id, 0])), notes: '', recurring: false, frequency: 'monthly', ends_on: null, debt_id: null, interest_amount: 0 });
+    } : { type: props.initialType, amount: null, occurred_at: today(), description: '', category_id: null, account_id: props.dashboard.workspace.accounts?.[0]?.id ?? null, paid_by_member_id: members.value[0]?.id ?? null, split_mode: 'single', assigned_member_id: members.value[0]?.id ?? null, custom_percentages: Object.fromEntries(members.value.map((member) => [member.id, 0])), notes: '', recurring: false, frequency: 'monthly', ends_on: null, debt_id: null, interest_amount: 0 });
     errors.value = {};
 });
 watch(() => form.debt_id, (id) => {

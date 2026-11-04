@@ -28,14 +28,17 @@ final class WorkspaceManagementTest extends TestCase
         $this->assertDatabaseCount('categories', 5);
     }
 
-    public function test_regular_user_cannot_create_a_workspace(): void
+    public function test_regular_user_can_create_a_ready_to_use_workspace(): void
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->postJson('/api/workspaces', [
+        $response = $this->actingAs($user)->postJson('/api/workspaces', [
             'name' => 'No permitido',
             'type' => 'household',
             'currency' => 'EUR',
-        ])->assertForbidden();
+        ])->assertCreated()->assertJsonPath('name', 'No permitido');
+
+        $workspaceId = $response->json('id');
+        $this->assertDatabaseHas('workspace_members', ['workspace_id' => $workspaceId, 'user_id' => $user->id, 'role' => 'owner']);
     }
 }

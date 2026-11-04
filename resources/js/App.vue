@@ -13,9 +13,11 @@ import InvitationDialog from './components/InvitationDialog.vue';
 import InvitationView from './views/InvitationView.vue';
 import WorkspaceDialog from './components/WorkspaceDialog.vue';
 import AdminPanel from './components/AdminPanel.vue';
+import MobileHome from './components/MobileHome.vue';
 const store = useFinanceStore();
 const movementDialogVisible = ref(false);
 const selectedMovement = ref(null);
+const selectedMovementType = ref('expense');
 const selectedBankTransaction = ref(null);
 const budgetDialogVisible = ref(false);
 const basePlanDialogVisible = ref(false);
@@ -33,7 +35,7 @@ const expectedResult = computed(() => (store.current?.plan.summary.expected_inco
 const monthLabel = computed(() => new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(new Date(`${store.current?.plan.month ?? store.planMonth}-02T12:00:00`)));
 const canInvite = computed(() => store.user?.is_superadmin || store.current?.workspace.members.some((member) => member.user_id === store.user?.id && member.role === 'owner'));
 function openBudget(budget = null) { selectedBudget.value = budget; budgetDialogVisible.value = true; }
-function openMovement(movement = null) { selectedBankTransaction.value = null; selectedMovement.value = movement; movementDialogVisible.value = true; }
+function openMovement(movement = null, type = 'expense') { selectedBankTransaction.value = null; selectedMovement.value = movement; selectedMovementType.value = type; movementDialogVisible.value = true; }
 function openBankTransaction(transaction) { selectedMovement.value = null; selectedBankTransaction.value = transaction; movementDialogVisible.value = true; }
 async function deleteMovement(movement) { if (window.confirm(`¿Eliminar "${movement.description}"? Esta acción no se puede deshacer.`)) await store.deleteMovement(movement.id); }
 function shiftMonth(offset) { const [year, month] = store.planMonth.split('-').map(Number); const date = new Date(year, month - 1 + offset, 1, 12); store.changePlanMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`); }
@@ -54,14 +56,16 @@ async function enterWorkspace(id) { adminMode.value = false; await store.select(
         <span><b class="block">{{ space.name }}</b><small class="text-emerald-100">{{ space.members.length }} participantes</small></span>
       </button>
       </div>
-      <Button v-if="store.user?.is_superadmin" label="Crear espacio" icon="pi pi-plus" severity="secondary" text class="mt-2 w-full !justify-start !text-white" @click="workspaceDialogVisible = true" />
+      <Button label="Crear espacio" icon="pi pi-plus" severity="secondary" text class="mt-2 w-full !justify-start !text-white" @click="workspaceDialogVisible = true" />
       <Button v-if="store.user?.is_superadmin" label="Administración" icon="pi pi-cog" severity="secondary" text class="mt-1 w-full !justify-start !text-white" @click="adminMode = true" />
       <div class="mt-4 flex items-center justify-between border-t border-white/15 pt-4 lg:mt-10 lg:block lg:pt-5"><p class="mb-0 text-sm text-emerald-100 lg:mb-3">{{ store.user.name }}</p><Button label="Cerrar sesión" icon="pi pi-sign-out" severity="secondary" text class="!p-2 !text-white lg:w-full lg:!justify-start" @click="store.logout" /></div>
     </aside>
     <main class="mx-auto w-full max-w-6xl p-3 pb-8 sm:p-5 md:p-10">
       <AdminPanel v-if="adminMode" @updated="store.loadWorkspaces" />
       <div v-else-if="store.current">
-        <header class="mb-8 flex flex-wrap items-start justify-between gap-3"><div><p class="text-sm capitalize text-slate-500">{{ store.current.workspace.name }} · {{ monthLabel }}</p><h1 class="text-3xl font-bold tracking-tight">{{ title }}</h1></div><div class="flex gap-2"><Button v-if="canInvite" label="Invitar" icon="pi pi-user-plus" severity="secondary" @click="invitationDialogVisible = true" /><Button label="Nuevo movimiento" icon="pi pi-plus" @click="openMovement()" /></div></header>
+        <MobileHome class="lg:hidden" :dashboard="store.current" :money="money" :month-label="monthLabel" @movement="openMovement" @plan="basePlanDialogVisible = true" @group="document.querySelector('.mobile-home .grid.grid-cols-2')?.scrollIntoView({ behavior: 'smooth', block: 'start' })" />
+        <div class="hidden lg:block">
+        <header class="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-start sm:justify-between"><div><p class="text-sm capitalize text-slate-500">{{ store.current.workspace.name }} · {{ monthLabel }}</p><h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ title }}</h1></div><div class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto"><Button v-if="canInvite" label="Invitar" icon="pi pi-user-plus" severity="secondary" class="w-full" @click="invitationDialogVisible = true" /><Button label="Nuevo movimiento" icon="pi pi-plus" class="w-full" @click="openMovement()" /></div></header>
         <section class="mb-6 grid grid-cols-3 gap-2 sm:gap-4 md:mb-8">
           <article class="rounded-2xl bg-white p-3 shadow-sm sm:p-6"><p class="text-xs text-slate-500 sm:text-sm">Ingresos</p><strong class="mt-2 block text-base text-emerald-700 sm:text-2xl">{{ money(store.current.summary.income) }}</strong></article>
           <article class="rounded-2xl bg-white p-3 shadow-sm sm:p-6"><p class="text-xs text-slate-500 sm:text-sm">Gastos</p><strong class="mt-2 block text-base sm:text-2xl">{{ money(store.current.summary.expenses) }}</strong></article>
@@ -82,10 +86,11 @@ async function enterWorkspace(id) { adminMode.value = false; await store.select(
           <article class="rounded-2xl bg-white p-6 shadow-sm"><h2 class="mb-2 text-lg font-bold">Saldos</h2><p class="mb-5 text-sm text-slate-500">Pagado frente a lo que correspondía</p><div v-for="row in store.current.balances" :key="row.member.id" class="mb-4 rounded-xl bg-slate-50 p-4"><div class="flex justify-between"><b>{{ row.member.display_name }}</b><Tag :severity="row.balance >= 0 ? 'success' : 'warn'" :value="money(row.balance)" /></div><p class="mt-2 text-xs text-slate-500">Pagó {{ money(row.paid) }} · Parte {{ money(row.share) }}</p></div></article>
         </section>
         <WealthPanel :dashboard="store.current" :money="money" />
+        </div>
       </div>
-      <section v-else class="mx-auto mt-24 max-w-lg rounded-3xl bg-white p-10 text-center shadow-sm"><span class="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-emerald-50 text-2xl text-emerald-700"><i class="pi pi-home" /></span><h1 class="mt-5 text-2xl font-bold">Crea tu primer espacio</h1><p class="mt-3 text-slate-500">Organiza un hogar o un negocio y después invita a las personas que participarán.</p><Button v-if="store.user?.is_superadmin" label="Crear espacio" icon="pi pi-plus" class="mt-7" @click="workspaceDialogVisible = true" /></section>
+      <section v-else class="mx-auto mt-24 max-w-lg rounded-3xl bg-white p-10 text-center shadow-sm"><span class="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-emerald-50 text-2xl text-emerald-700"><i class="pi pi-home" /></span><h1 class="mt-5 text-2xl font-bold">Crea tu primer espacio</h1><p class="mt-3 text-slate-500">Organiza un hogar o un negocio y después invita a las personas que participarán.</p><Button label="Crear espacio" icon="pi pi-plus" class="mt-7" @click="workspaceDialogVisible = true" /></section>
     </main>
-    <MovementDialog v-if="store.current" v-model="movementDialogVisible" :dashboard="store.current" :movement="selectedMovement" :bank-transaction="selectedBankTransaction" />
+    <MovementDialog v-if="store.current" v-model="movementDialogVisible" :dashboard="store.current" :movement="selectedMovement" :initial-type="selectedMovementType" :bank-transaction="selectedBankTransaction" />
     <BudgetDialog v-if="store.current" v-model="budgetDialogVisible" :dashboard="store.current" :budget="selectedBudget" />
     <BaseBudgetPlanDialog v-if="store.current" v-model="basePlanDialogVisible" :dashboard="store.current" />
     <InvitationDialog v-if="store.current" v-model="invitationDialogVisible" />

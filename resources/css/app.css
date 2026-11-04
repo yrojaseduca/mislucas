@@ -13,12 +13,22 @@
 @layer base {
     :root {
         color-scheme: light;
+        --ml-primary: #123b4a;
+        --ml-secondary: #2a7f87;
+        --ml-accent: #a9e5d1;
+        --ml-background: #f5f8f7;
+        --ml-surface: #ffffff;
+        --ml-text-primary: #172d38;
+        --ml-text-secondary: #64748b;
+        --ml-success: #16805d;
+        --ml-danger: #d94f45;
+        --ml-warning: #c58b28;
     }
 
     html,
     body {
-        background: #f6f7f2;
-        color: #0f172a;
+        background: var(--ml-background);
+        color: var(--ml-text-primary);
     }
 
     body {
@@ -31,9 +41,69 @@
     textarea {
         touch-action: manipulation;
     }
+
+    button {
+        -webkit-tap-highlight-color: transparent;
+    }
 }
 
 @media (max-width: 640px) {
+    .mobile-quick-action {
+        display: flex;
+        min-height: 4.25rem;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        border-radius: 0.85rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        transition: transform 180ms ease, background-color 180ms ease;
+    }
+
+    .mobile-quick-action:active {
+        transform: scale(0.97);
+    }
+
+    .mobile-quick-action i {
+        display: grid;
+        height: 2rem;
+        width: 2rem;
+        place-items: center;
+        border-radius: 999px;
+        font-size: 0.9rem;
+    }
+
+    .mobile-quick-action-primary { background: #fff0ed; color: #d94f45; }
+    .mobile-quick-action-primary i { background: #ffd7d1; }
+    .mobile-quick-action-income { background: #edf9f4; color: #16805d; }
+    .mobile-quick-action-income i { background: #c8f1df; }
+    .mobile-quick-action-transfer { background: #f0f5f8; color: #64748b; }
+    .mobile-quick-action-transfer i { background: #dbe8ef; }
+
+    .mobile-home {
+        padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+    }
+
+    .mobile-bottom-nav {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .p-button {
+        min-height: 2.75rem;
+    }
+
+    .p-button.p-button-icon-only {
+        min-width: 2.75rem;
+    }
+
+    .p-inputtext,
+    .p-select,
+    .p-inputnumber-input,
+    .p-textarea {
+        min-height: 2.75rem;
+    }
+
     .p-dialog {
         max-height: calc(100dvh - 1rem) !important;
         margin: 0.5rem;
