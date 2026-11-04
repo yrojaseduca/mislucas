@@ -59,6 +59,8 @@ async function importCsv(event) {
     } catch (exception) { error.value = exception.response?.data?.message ?? 'No se pudo importar el CSV.'; }
     finally { loading.value = false; event.target.value = ''; }
 }
+
+defineExpose({ openConnect, openImport: () => fileInput.value?.click() });
 </script>
 
 <template>

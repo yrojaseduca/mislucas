@@ -40,9 +40,9 @@ async function changeAccount() {
 </script>
 
 <template>
-  <main class="grid min-h-screen place-items-center bg-[#183f35] p-5">
+  <main class="grid min-h-screen place-items-center bg-[#123B4A] p-5">
     <section class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-xl md:p-10">
-      <div class="mb-7 flex items-center gap-3"><span class="grid h-11 w-11 place-items-center rounded-xl bg-[#d9ff85] font-bold text-[#183f35]">M</span><b class="text-xl">MisLucas</b></div>
+      <div class="mb-7 flex items-center gap-3"><span class="grid h-11 w-11 place-items-center rounded-xl bg-[#A9E5D1] font-bold text-[#123B4A]">M</span><b class="text-xl">MisLucas</b></div>
       <p v-if="loading" class="text-slate-500">Comprobando invitación…</p>
       <template v-else-if="invitation">
         <p class="text-sm font-semibold text-emerald-700">Te han invitado</p>

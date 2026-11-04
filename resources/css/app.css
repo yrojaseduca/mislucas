@@ -15,7 +15,10 @@
         color-scheme: light;
         --ml-primary: #123b4a;
         --ml-secondary: #2a7f87;
-        --ml-accent: #a9e5d1;
+        --ml-accent: #f1073b;
+        --ml-accent-hover: #d00634;
+        --ml-accent-soft: #ffe7ed;
+        --ml-mint: #a9e5d1;
         --ml-background: #f5f8f7;
         --ml-surface: #ffffff;
         --ml-text-primary: #172d38;
@@ -47,6 +50,92 @@
     }
 }
 
+.data-list-card {
+    max-height: 32rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #a9e5d1 transparent;
+}
+
+.data-list-card__header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #ffffff;
+    padding-top: 0.1rem;
+}
+
+.movement-expense-button {
+    background: #f1073b !important;
+    border-color: #f1073b !important;
+}
+
+.header-action-button {
+    height: 2rem;
+    min-height: 2rem;
+    padding: 0.25rem 0.55rem !important;
+    border-radius: 0.6rem !important;
+    font-size: 0.6875rem !important;
+}
+
+.header-action-button .p-button-icon {
+    font-size: 0.7rem;
+}
+
+.header-invite-button {
+    background: #e7f0ed !important;
+    border-color: #c7dbdb !important;
+    color: #123b4a !important;
+}
+
+.header-invite-button:hover {
+    background: #d7e8e3 !important;
+    border-color: #a9e5d1 !important;
+}
+
+.sidebar-workspace-select {
+    border: 1px solid rgba(169, 229, 209, 0.25) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+}
+
+.sidebar-workspace-select .p-select-label,
+.sidebar-workspace-select .p-select-dropdown {
+    color: #ffffff !important;
+}
+
+.mobile-wealth-list {
+    max-height: 12rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #a9e5d1 transparent;
+}
+
+.mobile-data-card {
+    max-height: 18rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #a9e5d1 transparent;
+}
+
+.movement-expense-button:hover { background: #d00634 !important; border-color: #d00634 !important; }
+
+.movement-income-button {
+    background: #16805d !important;
+    border-color: #16805d !important;
+}
+
+.mobile-menu-import {
+    color: #2a7f87;
+}
+
+.mobile-menu-bank {
+    color: #2a7f87;
+}
+
 @media (max-width: 640px) {
     .mobile-quick-action {
         display: flex;
@@ -74,8 +163,8 @@
         font-size: 0.9rem;
     }
 
-    .mobile-quick-action-primary { background: #fff0ed; color: #d94f45; }
-    .mobile-quick-action-primary i { background: #ffd7d1; }
+    .mobile-quick-action-primary { background: #ffe7ed; color: #f1073b; }
+    .mobile-quick-action-primary i { background: #ffc1d0; }
     .mobile-quick-action-income { background: #edf9f4; color: #16805d; }
     .mobile-quick-action-income i { background: #c8f1df; }
     .mobile-quick-action-transfer { background: #f0f5f8; color: #64748b; }
@@ -87,6 +176,58 @@
 
     .mobile-bottom-nav {
         padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .mobile-workspace-select {
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
+    .mobile-workspace-select .p-select-label {
+        overflow: hidden;
+        padding: 0.5rem 0.25rem;
+        color: #172d38;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .mobile-workspace-select .p-select-dropdown {
+        width: 1.5rem;
+    }
+
+    .mobile-workspace-select-dark {
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    .mobile-workspace-select-dark .p-select-label,
+    .mobile-workspace-select-dark .p-select-dropdown {
+        color: #ffffff;
+    }
+
+    .mobile-period-select,
+    .mobile-period-control {
+        height: 2.75rem;
+        min-height: 2.75rem;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    .mobile-period-select .p-select-label {
+        display: flex;
+        align-items: center;
+        height: 100%;
+        padding: 0 0.75rem;
+    }
+
+    .mobile-period-select .p-select-dropdown {
+        padding-right: 0.65rem;
+    }
+
+    .mobile-category-add {
+        white-space: normal;
     }
 
     .p-button {
