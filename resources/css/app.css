@@ -121,6 +121,14 @@
     scrollbar-color: #a9e5d1 transparent;
 }
 
+.mobile-budget-list {
+    max-height: 18rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #a9e5d1 transparent;
+}
+
 .movement-expense-button:hover { background: #d00634 !important; border-color: #d00634 !important; }
 
 .movement-income-button {
